@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Defense Kingdom</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --hud-surface: rgba(10, 20, 36, 0.68);
+            --hud-surface-soft: rgba(16, 29, 47, 0.52);
+            --hud-border: rgba(118, 177, 255, 0.28);
+            --hud-border-strong: rgba(156, 205, 255, 0.45);
+            --hud-text: #ecf5ff;
+            --hud-muted: #8fa6c0;
+            --hud-gold: #ffd46b;
+            --hud-danger: #ff7272;
+            --hud-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+            --hud-blur: blur(14px);
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 10px;
+        }
+        body {
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 15%, #b6ddff 0%, #86c4eb 40%, #5ea1d8 100%);
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            color: var(--hud-text);
+        }
+        canvas { display: block; }
+        #ui {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 10;
+        }
+        .hud-top {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+        }
+        .stats-group {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(120px, 1fr));
+            gap: 10px;
+            pointer-events: auto;
+            max-width: 620px;
+            width: 100%;
+        }
+        .stat-box {
+            background: linear-gradient(160deg, rgba(34, 51, 80, 0.65), rgba(12, 24, 42, 0.62));
+            border: 1px solid var(--hud-border);
+            border-radius: var(--radius-md);
+            padding: 10px 14px;
+            text-align: left;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), var(--hud-shadow);
+            backdrop-filter: var(--hud-blur);
+            min-width: 110px;
+        }
+        .stat-box .label {
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--hud-muted);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .stat-box .value {
+            font-size: clamp(22px, 1.8vw, 30px);
+            font-weight: 800;
+            line-height: 1;
+            color: var(--hud-text);
+        }
+        .stat-box.gold .value { color: var(--hud-gold); }
+        .stat-box.lives .value.low { color: var(--hud-danger); }
+        .wave-card {
+            pointer-events: auto;
+            background: linear-gradient(160deg, rgba(24, 42, 68, 0.74), rgba(10, 20, 36, 0.7));
+            border: 1px solid var(--hud-border);
+            border-radius: var(--radius-lg);
+            padding: 12px 16px;
+            min-width: 280px;
+            max-width: 360px;
+            box-shadow: var(--hud-shadow);
+            backdrop-filter: var(--hud-blur);
+        }
+        .wave-label {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--hud-muted);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .wave-title {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .wave-title .number {
+            font-size: 26px;
+            font-weight: 800;
+            color: #f4f9ff;
+        }
+        .wave-title .hint {
+            font-size: 11px;
+            color: var(--hud-muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .wave-progress {
+            height: 7px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.11);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .wave-progress-fill {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #6bd4ff, #8bb8ff);
+            box-shadow: 0 0 14px rgba(116, 187, 255, 0.55);
+            transition: width 0.28s ease;
+        }
+        .wave-subtext {
+            font-size: 12px;
+            color: var(--hud-muted);
+        }
+        .tower-panel {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            pointer-events: auto;
+            background: linear-gradient(160deg, rgba(21, 36, 58, 0.86), rgba(10, 20, 36, 0.84));
+            border: 1px solid var(--hud-border);
+            border-radius: var(--radius-lg);
+            padding: 10px;
+            box-shadow: var(--hud-shadow);
+            backdrop-filter: var(--hud-blur);
+        }
+        .tower-btn {
+            width: 156px;
+            min-height: 128px;
+            background: linear-gradient(160deg, rgba(28, 48, 76, 0.76), rgba(16, 29, 48, 0.82));
+            border: 1px solid rgba(128, 182, 255, 0.27);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: 38px 1fr;
+            grid-template-rows: auto auto auto;
+            align-items: center;
+            column-gap: 10px;
+            row-gap: 3px;
+            padding: 10px;
+            color: var(--hud-text);
+            transition: border-color 0.22s ease, transform 0.2s ease, box-shadow 0.22s ease, background 0.22s ease;
+            position: relative;
+        }
+        .tower-btn:hover {
+            border-color: var(--hud-border-strong);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.3);
+        }
+        .tower-btn.selected {
+            border-color: #9ed8ff;
+            background: linear-gradient(150deg, rgba(54, 96, 146, 0.9), rgba(24, 54, 88, 0.92));
+            box-shadow: 0 0 0 2px rgba(173, 224, 255, 0.48), 0 14px 30px rgba(0, 0, 0, 0.4);
+            transform: translateY(-2px);
+        }
+        .tower-btn.insufficient {
+            opacity: 0.56;
+            border-color: rgba(197, 128, 128, 0.35);
+        }
+        .tower-btn .tower-name {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            align-self: end;
+        }
+        .tower-btn .tower-stats {
+            grid-column: 2;
+            font-size: 11px;
+            color: var(--hud-muted);
+            line-height: 1.2;
+        }
+        .tower-btn .cost {
+            grid-column: 1 / span 2;
+            justify-self: end;
+            color: var(--hud-gold);
+            font-size: 18px;
+            font-weight: 800;
+        }
+        .tower-btn .icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            grid-row: 1 / span 2;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .tower-btn[data-type="blaster"] .icon { background: linear-gradient(145deg, #476eb5, #2c4f8b); }
+        .tower-btn[data-type="cannon"] .icon { background: linear-gradient(145deg, #5a667d, #3f485b); }
+        .tower-btn[data-type="sniper"] .icon { background: linear-gradient(145deg, #5e4ca9, #3f3383); }
+        #wave-info {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            min-width: 300px;
+            text-align: center;
+            color: #f5fbff;
+            font-size: clamp(42px, 4.8vw, 66px);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            text-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+            opacity: 0;
+            pointer-events: none;
+            border-radius: 18px;
+            background: linear-gradient(145deg, rgba(24, 40, 64, 0.78), rgba(11, 20, 35, 0.72));
+            border: 1px solid rgba(165, 211, 255, 0.34);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(12px);
+            padding: 22px 32px;
+            transition: opacity 0.32s ease, transform 0.32s ease;
+        }
+        #wave-info.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        #wave-info.danger {
+            border-color: rgba(255, 152, 152, 0.58);
+            color: #ffd8d8;
+            background: linear-gradient(145deg, rgba(68, 25, 35, 0.76), rgba(34, 16, 22, 0.72));
+        }
+        #debug-panel {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: linear-gradient(160deg, rgba(24, 39, 61, 0.85), rgba(12, 22, 38, 0.84));
+            border: 1px solid var(--hud-border);
+            padding: 14px;
+            border-radius: 12px;
+            color: #d9e9ff;
+            font-size: 12px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            max-width: 280px;
+            pointer-events: auto;
+            box-shadow: var(--hud-shadow);
+            backdrop-filter: var(--hud-blur);
+            display: none;
+        }
+        #debug-panel.active { display: block; }
+        .debug-row { display: flex; justify-content: space-between; margin: 3px 0; }
+        .debug-label { color: var(--hud-muted); }
+        .debug-value { color: #fff; }
+        .debug-value.good { color: #7ec850; }
+        .debug-value.bad { color: #e05050; }
+        #start-screen {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 16%, rgba(255, 250, 214, 0.5), transparent 34%),
+                linear-gradient(180deg, #c8ecff 0%, #a4dcff 36%, #97d78e 74%, #6dad66 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            pointer-events: auto;
+            overflow: hidden;
+        }
+        #start-screen::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 50% -10%, rgba(255, 255, 255, 0.42), transparent 48%),
+                radial-gradient(circle at 50% 120%, rgba(35, 70, 35, 0.22), transparent 56%);
+            pointer-events: none;
+        }
+        .start-forest {
+            position: absolute;
+            inset: auto 0 0;
+            height: min(52vh, 430px);
+            pointer-events: none;
+            filter: blur(2px);
+        }
+        .forest-layer {
+            position: absolute;
+            inset: auto -12% 0;
+            height: 100%;
+            animation: forestDrift 16s ease-in-out infinite;
+            transform-origin: bottom center;
+        }
+        .forest-layer.back {
+            opacity: 0.38;
+            transform: scale(1.12);
+            filter: blur(8px);
+            animation-duration: 19s;
+        }
+        .forest-layer.mid {
+            opacity: 0.52;
+            filter: blur(5px);
+            animation-duration: 15s;
+        }
+        .forest-layer.front {
+            opacity: 0.66;
+            filter: blur(3px);
+            animation-duration: 12s;
+        }
+        .tree {
+            position: absolute;
+            bottom: 0;
+            width: clamp(110px, 12vw, 190px);
+            border-radius: 48% 52% 46% 54% / 64% 64% 36% 36%;
+            background: linear-gradient(180deg, #4f8f49 0%, #376f34 100%);
+            box-shadow: 0 16px 28px rgba(30, 56, 24, 0.24);
+            animation: treeSway 5.5s ease-in-out infinite;
+            transform-origin: bottom center;
+        }
+        .forest-layer.back .tree { background: linear-gradient(180deg, #5d9c57 0%, #467f42 100%); }
+        .forest-layer.mid .tree { background: linear-gradient(180deg, #4d8a46 0%, #356c31 100%); }
+        .forest-layer.front .tree { background: linear-gradient(180deg, #457f3f 0%, #2f5f2b 100%); }
+        .tree.t1 { left: 2%; height: 52%; animation-delay: -0.5s; }
+        .tree.t2 { left: 14%; height: 64%; animation-delay: -1.8s; }
+        .tree.t3 { left: 27%; height: 58%; animation-delay: -2.7s; }
+        .tree.t4 { left: 40%; height: 67%; animation-delay: -0.9s; }
+        .tree.t5 { left: 54%; height: 55%; animation-delay: -3.2s; }
+        .tree.t6 { left: 68%; height: 63%; animation-delay: -1.2s; }
+        .tree.t7 { left: 81%; height: 56%; animation-delay: -2.2s; }
+        .tree.t8 { left: 92%; height: 61%; animation-delay: -0.3s; }
+        .start-card {
+            position: relative;
+            z-index: 2;
+            padding: clamp(24px, 4vw, 42px) clamp(26px, 5vw, 56px);
+            text-align: center;
+            background: rgba(246, 255, 241, 0.2);
+            border: 1px solid rgba(231, 250, 217, 0.4);
+            border-radius: 24px;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 18px 44px rgba(35, 63, 32, 0.2);
+        }
+        #start-screen h1 {
+            font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+            font-size: clamp(58px, 10vw, 126px);
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #fffef5;
+            text-shadow: 0 4px 14px rgba(42, 78, 37, 0.25), 0 20px 36px rgba(42, 78, 37, 0.32);
+            margin-bottom: 22px;
+            line-height: 0.9;
+        }
+        .start-btn {
+            padding: 16px 56px;
+            border-radius: 999px;
+            border: 1px solid rgba(248, 255, 241, 0.9);
+            background: linear-gradient(140deg, #9bd77b, #79bf5f);
+            color: #224724;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+            box-shadow: 0 14px 30px rgba(54, 106, 42, 0.42);
+        }
+        .start-btn:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 20px 36px rgba(54, 106, 42, 0.5);
+            filter: brightness(1.04);
+        }
+        #test-overlay {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(160deg, rgba(24, 39, 61, 0.9), rgba(12, 22, 38, 0.9));
+            border: 1px solid var(--hud-border);
+            padding: 16px;
+            border-radius: 12px;
+            color: var(--hud-text);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            max-width: 420px;
+            pointer-events: auto;
+            z-index: 50;
+            box-shadow: var(--hud-shadow);
+            backdrop-filter: var(--hud-blur);
+        }
+        .test-header { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #9dd2ff; letter-spacing: 0.08em; }
+        .test-row { margin: 4px 0; display: flex; justify-content: space-between; }
+        .test-pass { color: #7ec850; }
+        .test-fail { color: #e05050; }
+        .test-fixing { color: #e8a030; }
+        #tooltip {
+            position: fixed; pointer-events: none;
+            background: rgba(12, 22, 38, 0.95); border: 1px solid var(--hud-border);
+            color: var(--hud-text); padding: 8px 12px; border-radius: 8px;
+            font-size: 12px; z-index: 200; display: none;
+        }
+        @media (max-width: 980px) {
+            .hud-top {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .stats-group {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
+                max-width: none;
+            }
+            .wave-card {
+                max-width: none;
+            }
+            .tower-panel {
+                width: calc(100% - 24px);
+                left: 12px;
+                right: 12px;
+                transform: none;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .tower-btn {
+                flex: 1 1 220px;
+            }
+            .start-btn {
+                width: min(86vw, 320px);
+            }
+            .start-card {
+                padding: 20px 18px 28px;
+            }
+            #start-screen h1 {
+                font-size: clamp(50px, 15vw, 86px);
+                margin-bottom: 18px;
+            }
+            .start-forest {
+                height: min(45vh, 310px);
+            }
+        }
+        @keyframes forestDrift {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(18px); }
+        }
+        @keyframes treeSway {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(1.2deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="start-screen">
+        <div class="start-forest" aria-hidden="true">
+            <div class="forest-layer back">
+                <div class="tree t1"></div><div class="tree t2"></div><div class="tree t3"></div><div class="tree t4"></div>
+                <div class="tree t5"></div><div class="tree t6"></div><div class="tree t7"></div><div class="tree t8"></div>
+            </div>
+            <div class="forest-layer mid">
+                <div class="tree t1"></div><div class="tree t2"></div><div class="tree t3"></div><div class="tree t4"></div>
+                <div class="tree t5"></div><div class="tree t6"></div><div class="tree t7"></div><div class="tree t8"></div>
+            </div>
+            <div class="forest-layer front">
+                <div class="tree t1"></div><div class="tree t2"></div><div class="tree t3"></div><div class="tree t4"></div>
+                <div class="tree t5"></div><div class="tree t6"></div><div class="tree t7"></div><div class="tree t8"></div>
+            </div>
+        </div>
+        <div class="start-card">
+            <h1>Kingdom Defense</h1>
+            <button class="start-btn" onclick="startGame()">Start Game</button>
+        </div>
+    </div>
+
+    <div id="ui" style="display: none;">
+        <div class="hud-top">
+            <div class="stats-group">
+                <div class="stat-box gold">
+                    <div class="label">Gold</div>
+                    <div class="value" id="energy">500</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Wave</div>
+                    <div class="value" id="wave">1</div>
+                </div>
+                <div class="stat-box lives">
+                    <div class="label">Lives</div>
+                    <div class="value" id="lives">20</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Score</div>
+                    <div class="value" id="score">0</div>
+                </div>
+            </div>
+            <div class="wave-card">
+                <div class="wave-label">Wave Progress</div>
+                <div class="wave-title">
+                    <div class="number" id="wave-stage">Preparing...</div>
+                    <div class="hint">Auto starts</div>
+                </div>
+                <div class="wave-progress">
+                    <div class="wave-progress-fill" id="wave-progress-fill"></div>
+                </div>
+                <div class="wave-subtext" id="wave-progress-text">No enemies yet</div>
+            </div>
+        </div>
+        <div id="wave-info">Wave 1</div>
+        <div class="tower-panel">
+            <div class="tower-btn selected" data-type="blaster" onclick="selectTower('blaster')">
+                <div class="icon">🏹</div>
+                <div class="tower-name">Archer</div>
+                <div class="tower-stats">Fast shots · Mid range</div>
+                <div class="cost">50</div>
+            </div>
+            <div class="tower-btn" data-type="cannon" onclick="selectTower('cannon')">
+                <div class="icon">💣</div>
+                <div class="tower-name">Cannon</div>
+                <div class="tower-stats">Splash damage · Slow fire</div>
+                <div class="cost">120</div>
+            </div>
+            <div class="tower-btn" data-type="sniper" onclick="selectTower('sniper')">
+                <div class="icon">🔮</div>
+                <div class="tower-name">Mage</div>
+                <div class="tower-stats">Long range · Heavy burst</div>
+                <div class="cost">200</div>
+            </div>
+        </div>
+        <div id="debug-panel">
+            <div style="font-weight:700;margin-bottom:8px;color:#e8c84a;">DEBUG</div>
+            <div class="debug-row"><span class="debug-label">FPS:</span><span class="debug-value" id="fps">60</span></div>
+            <div class="debug-row"><span class="debug-label">Physics:</span><span class="debug-value" id="phys-step">0ms</span></div>
+            <div class="debug-row"><span class="debug-label">Entities:</span><span class="debug-value" id="entities">0</span></div>
+            <div class="debug-row"><span class="debug-label">Collisions:</span><span class="debug-value" id="collisions">0</span></div>
+            <div class="debug-row"><span class="debug-label">Wall Clips:</span><span class="debug-value good" id="clips">0</span></div>
+            <div class="debug-row"><span class="debug-label">Floaters:</span><span class="debug-value good" id="floaters">0</span></div>
+            <div style="margin-top:10px;font-size:10px;color:#888;">Press F3 to toggle</div>
+        </div>
+    </div>
+
+    <div id="test-overlay" style="display: none;">
+        <div class="test-header">SELF-TEST SUITE</div>
+        <div id="test-results"></div>
+    </div>
+
+    <div id="tooltip"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
