@@ -8,6 +8,9 @@ import { Enemy } from './Enemy.js';
 import { ProjectileManager } from './Projectile.js';
 import { ParticleSystem } from './ParticleSystem.js';
 import { Physics } from './Physics.js';
+import { SETTINGS, getTowerStats, clampTowerLevel } from './settings.js';
+import { AudioManager } from './audio/AudioManager.js';
+import { AgentController } from './ai/AgentController.js';
 
 export class Game {
     constructor(scene, camera, controls, renderer) {
@@ -24,15 +27,20 @@ export class Game {
         this.board = new Board(scene, this.physics, this.path);
         this.particleSystem = new ParticleSystem(scene);
         this.projectileManager = new ProjectileManager(scene, this.physics, this.particleSystem);
+        this.audio = new AudioManager();
+        this.agentController = new AgentController(this);
 
         this.towers = [];
         this.enemies = [];
 
-        this.energy = 500;
-        this.lives = 20;
+        this.energy = SETTINGS.economy.startingGold;
+        this.lives = SETTINGS.economy.startingLives;
         this.score = 0;
         this.wave = 1;
         this.selectedTowerType = 'blaster';
+        this.selectedTowerLevel = 1;
+        this.armedDeleteTower = null;
+        this.armedDeleteExpireAt = 0;
         this.gameState = 'playing';
 
         this.waveInProgress = false;
@@ -51,10 +59,15 @@ export class Game {
         this.hoverSpot = null;
         this.previewTower = null;
 
-        // Keyboard movement state
+        // Spectator camera state (Minecraft-like free flight)
         this.keys = {};
-        this.cameraSpeed = 36;
-        this.cameraHeightSpeed = 10;
+        this.cameraSpeed = 52;
+        this.cameraPitch = 0;
+        this.cameraYaw = 0;
+        this.mouseLookSensitivity = 0.0025;
+        this.isLookDragging = false;
+        this.lastMouseX = 0;
+        this.lastMouseY = 0;
 
         this.setupLights();
         this.setupInput();
@@ -89,11 +102,33 @@ export class Game {
 
     setupInput() {
         const canvas = this.controls.domElement;
+        this.syncCameraAnglesFromCurrentView();
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        canvas.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button !== 2) return;
+            this.isLookDragging = true;
+            this.lastMouseX = e.clientX;
+            this.lastMouseY = e.clientY;
+            e.preventDefault();
+        });
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 2) this.isLookDragging = false;
+        });
+        canvas.addEventListener('mouseleave', () => { this.isLookDragging = false; });
 
         canvas.addEventListener('mousemove', (e) => {
             this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
             this.updatePreview();
+
+            if (this.isLookDragging) {
+                const dx = e.clientX - this.lastMouseX;
+                const dy = e.clientY - this.lastMouseY;
+                this.lastMouseX = e.clientX;
+                this.lastMouseY = e.clientY;
+                this.applyFPSLook(dx, dy);
+            }
         });
 
         canvas.addEventListener('click', (e) => {
@@ -101,14 +136,14 @@ export class Game {
             this.handleClick();
         });
 
-        // ZQSD + Arrow key camera controls
+        // Spectator controls: ZQSD + Space/C
         window.addEventListener('keydown', (e) => {
             this.keys[e.key.toLowerCase()] = true;
             this.keys[e.code] = true;
             if (e.key === 'F3') {
                 document.getElementById('debug-panel').classList.toggle('active');
             }
-            if (e.code === 'Space' && !this.waveInProgress) {
+            if (e.code === 'Enter' && !this.waveInProgress) {
                 this.startWave();
             }
         });
@@ -119,54 +154,50 @@ export class Game {
         });
     }
 
+    syncCameraAnglesFromCurrentView() {
+        const viewDir = new THREE.Vector3();
+        this.camera.getWorldDirection(viewDir);
+        this.cameraYaw = Math.atan2(viewDir.x, viewDir.z);
+        this.cameraPitch = Math.asin(THREE.MathUtils.clamp(viewDir.y, -0.999, 0.999));
+        this.applyCameraRotation();
+    }
+
+    applyCameraRotation() {
+        this.camera.rotation.order = 'YXZ';
+        this.camera.rotation.y = this.cameraYaw;
+        this.camera.rotation.x = this.cameraPitch;
+        this.camera.rotation.z = 0;
+    }
+
     updateCameraMovement(delta) {
-        // ZQSD movement (French WASD) for ground plane movement
         const forward = this.keys['z'];
         const backward = this.keys['s'];
         const left = this.keys['q'];
         const right = this.keys['d'];
+        const goUp = this.keys['space'] || this.keys[' '];
+        const goDown = this.keys['c'];
 
-        // Up/Down arrows for camera height
-        const goUp = this.keys['arrowup'] || this.keys[' '];
-        const goDown = this.keys['arrowdown'] || this.keys['c'];
+        const speedBoost = this.keys['shift'] ? 1.8 : 1;
+        const moveSpeed = this.cameraSpeed * speedBoost * delta;
 
-        // Get camera forward direction (flattened to XZ plane)
-        const forwardDir = new THREE.Vector3();
-        this.camera.getWorldDirection(forwardDir);
-        forwardDir.y = 0;
-        forwardDir.normalize();
+        const horizontalForward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.cameraYaw);
+        horizontalForward.y = 0;
+        horizontalForward.normalize();
+        const horizontalRight = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), horizontalForward).normalize();
 
-        const rightDir = new THREE.Vector3();
-        rightDir.crossVectors(forwardDir, new THREE.Vector3(0, 1, 0)).normalize();
+        if (forward) this.camera.position.addScaledVector(horizontalForward, moveSpeed);
+        if (backward) this.camera.position.addScaledVector(horizontalForward, -moveSpeed);
+        if (left) this.camera.position.addScaledVector(horizontalRight, moveSpeed);
+        if (right) this.camera.position.addScaledVector(horizontalRight, -moveSpeed);
+        if (goUp) this.camera.position.y += moveSpeed;
+        if (goDown) this.camera.position.y -= moveSpeed;
+    }
 
-        const moveSpeed = this.cameraSpeed * delta;
-
-        if (forward) {
-            this.camera.position.addScaledVector(forwardDir, moveSpeed);
-            this.controls.target.addScaledVector(forwardDir, moveSpeed);
-        }
-        if (backward) {
-            this.camera.position.addScaledVector(forwardDir, -moveSpeed);
-            this.controls.target.addScaledVector(forwardDir, -moveSpeed);
-        }
-        if (left) {
-            this.camera.position.addScaledVector(rightDir, -moveSpeed);
-            this.controls.target.addScaledVector(rightDir, -moveSpeed);
-        }
-        if (right) {
-            this.camera.position.addScaledVector(rightDir, moveSpeed);
-            this.controls.target.addScaledVector(rightDir, moveSpeed);
-        }
-
-        // Height control with Up/Down arrows (when not combined with shift for other things)
-        // Use plain Up/Down for height, disable orbit controls auto-rotate
-        const heightSpeed = this.cameraHeightSpeed * delta;
-        if (goUp && !this.keys['shift']) {
-            this.camera.position.y += heightSpeed;
-        }
-        if (goDown && !this.keys['shift']) {
-            this.camera.position.y = Math.max(5, this.camera.position.y - heightSpeed);
-        }
+    applyFPSLook(movementX, movementY) {
+        this.cameraYaw -= movementX * this.mouseLookSensitivity;
+        this.cameraPitch -= movementY * this.mouseLookSensitivity;
+        this.cameraPitch = THREE.MathUtils.clamp(this.cameraPitch, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
+        this.applyCameraRotation();
     }
 
     updatePreview() {
@@ -238,27 +269,149 @@ export class Game {
     }
 
     getTowerRange(type) {
-        const ranges = { blaster: 18, cannon: 24, sniper: 42 };
-        return ranges[type] || 18;
+        return getTowerStats(type, this.selectedTowerLevel).range;
+    }
+
+    placeTowerAtSpot(type, level, spot) {
+        if (!spot || typeof spot.x !== 'number' || typeof spot.z !== 'number') return false;
+        const p = this.board.tryTowerPlacementAt(spot.x, spot.z, this.towers);
+        if (!p) return false;
+        const lv = clampTowerLevel(level);
+        const stats = getTowerStats(type, lv);
+        const cost = stats.cost;
+        if (typeof cost !== 'number' || this.energy < cost) return false;
+
+        this.energy -= cost;
+        const tower = new Tower(this.scene, this.physics, p.x, p.z, type, p.y, lv);
+        this.towers.push(tower);
+        this.particleSystem.createExplosion(new THREE.Vector3(p.x, p.y + 1, p.z), 'small');
+        if (tower.type === 'cannon') this.audio.play('cannonShot');
+        if (tower.type === 'mortar') this.audio.play('mortarShot');
+        this.updateUI();
+        if (this.previewTower) { this.scene.remove(this.previewTower); this.previewTower = null; }
+        return true;
+    }
+
+    getPathDataForAI() {
+        return this.path.waypoints.map((point) => ({
+            x: Number(point.x.toFixed(2)),
+            z: Number(point.z.toFixed(2))
+        }));
+    }
+
+    computeCandidateBuildSpots() {
+        const spots = [];
+        const extent = this.board.mapExtent;
+        const step = 6;
+        let idx = 0;
+        for (let x = -extent + 3; x <= extent - 3; x += step) {
+            for (let z = -extent + 3; z <= extent - 3; z += step) {
+                if (!this.board.canPlaceTowerAt(x, z, this.towers)) continue;
+                spots.push({
+                    id: idx++,
+                    x: Number(x.toFixed(2)),
+                    z: Number(z.toFixed(2)),
+                    distanceToPath: Number(this.board.distanceToPath(x, z).toFixed(2))
+                });
+            }
+        }
+        spots.sort((a, b) => a.distanceToPath - b.distanceToPath);
+        return spots.slice(0, SETTINGS.ai.maxCandidateSpots);
+    }
+
+    buildAiContext() {
+        const towersByType = this.towers.reduce((acc, tower) => {
+            acc[tower.type] = (acc[tower.type] || 0) + 1;
+            return acc;
+        }, {});
+        const availableTowerOptions = Object.keys(SETTINGS.towers.types).map((type) => {
+            const level = this.selectedTowerType === type ? this.selectedTowerLevel : 1;
+            const stats = getTowerStats(type, level);
+            return {
+                type,
+                level,
+                cost: stats.cost,
+                range: Number(stats.range.toFixed(2)),
+                damage: Number(stats.damage.toFixed(2)),
+                cooldown: Number(stats.cooldown.toFixed(3))
+            };
+        });
+        return {
+            wave: this.wave,
+            waveInProgress: this.waveInProgress,
+            lives: this.lives,
+            score: this.score,
+            gold: this.energy,
+            enemiesAlive: this.enemies.length,
+            enemiesRemainingToSpawn: this.enemiesToSpawn.length,
+            waveEnemiesKilled: this.waveEnemiesKilled,
+            waveEnemyCount: this.waveEnemyCount,
+            towersPlaced: this.towers.length,
+            towersByType,
+            path: this.getPathDataForAI(),
+            candidateSpots: this.computeCandidateBuildSpots(),
+            availableTowerOptions
+        };
     }
 
     handleClick() {
+        this.audio.unlock();
+        const selectedTower = this.pickExistingTower();
+        if (selectedTower) {
+            this.handleTowerDeleteClick(selectedTower);
+            return;
+        }
+
         if (!this.selectedTowerType) return;
         if (!this.hoverSpot) return;
-        const p = this.board.tryTowerPlacementAt(this.hoverSpot.x, this.hoverSpot.z, this.towers);
-        if (!p) return;
-        const costs = { blaster: 50, cannon: 120, sniper: 200 };
-        const cost = costs[this.selectedTowerType];
-        if (typeof cost !== 'number') return;
+        this.placeTowerAtSpot(this.selectedTowerType, this.selectedTowerLevel, this.hoverSpot);
+    }
 
-        if (this.energy >= cost) {
-            this.energy -= cost;
-            const tower = new Tower(this.scene, this.physics, p.x, p.z, this.selectedTowerType, p.y);
-            this.towers.push(tower);
-            this.particleSystem.createExplosion(new THREE.Vector3(p.x, p.y + 1, p.z), 'small');
-            this.updateUI();
-            if (this.previewTower) { this.scene.remove(this.previewTower); this.previewTower = null; }
+    pickExistingTower() {
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const meshes = this.towers.map((tower) => tower.mesh);
+        const hit = this.raycaster.intersectObjects(meshes, true)[0];
+        if (!hit) return null;
+        return this.towers.find((tower) => tower.mesh === hit.object || tower.mesh.children.includes(hit.object)) || null;
+    }
+
+    handleTowerDeleteClick(tower) {
+        const now = this.gameTime;
+        if (this.armedDeleteTower === tower && now <= this.armedDeleteExpireAt) {
+            this.deleteTower(tower);
+            return;
         }
+        this.armTowerForDeletion(tower, now);
+    }
+
+    armTowerForDeletion(tower, now) {
+        if (this.armedDeleteTower && this.armedDeleteTower !== tower) {
+            this.armedDeleteTower.setDeleteMarked(false);
+        }
+        this.armedDeleteTower = tower;
+        this.armedDeleteExpireAt = now + 1.0;
+        tower.setDeleteMarked(true);
+    }
+
+    clearArmedTowerDeletion() {
+        if (this.armedDeleteTower) {
+            this.armedDeleteTower.setDeleteMarked(false);
+        }
+        this.armedDeleteTower = null;
+        this.armedDeleteExpireAt = 0;
+    }
+
+    deleteTower(tower) {
+        if (!tower) return false;
+        const idx = this.towers.indexOf(tower);
+        if (idx < 0) return false;
+        const refund = Math.round(tower.costPaid * SETTINGS.economy.towerSellRefundRatio);
+        this.energy += refund;
+        tower.destroy();
+        this.towers.splice(idx, 1);
+        this.clearArmedTowerDeletion();
+        this.updateUI();
+        return true;
     }
 
     startWave() {
@@ -266,7 +419,8 @@ export class Game {
         this.waveInProgress = true;
         this.waveEnemyCount = 0;
         this.waveEnemiesKilled = 0;
-        this.waveHpMultiplier = 1 + (this.wave - 1) * 0.15;
+        this.waveHpMultiplier = 1 + (this.wave - 1) * SETTINGS.waves.hpMultiplierPerWave;
+        this.waveSpeedMultiplier = 1 + (this.wave - 1) * SETTINGS.waves.speedMultiplierPerWave;
 
         const baseCount = 6 + this.wave * 4 + Math.floor((this.wave - 1) / 3) * 2;
         this.enemiesToSpawn = this.buildWaveSpawnPlan(baseCount);
@@ -335,6 +489,7 @@ export class Game {
     spawnEnemy(type) {
         const enemy = new Enemy(this.scene, this.physics, this.path, type, {
             hpMultiplier: this.waveHpMultiplier
+            , speedMultiplier: this.waveSpeedMultiplier
         });
         this.enemies.push(enemy);
         this.waveEnemyCount++;
@@ -343,8 +498,10 @@ export class Game {
     update(delta) {
         this.time += delta;
         this.gameTime += delta;
+        if (this.armedDeleteTower && this.gameTime > this.armedDeleteExpireAt) {
+            this.clearArmedTowerDeletion();
+        }
 
-        // Camera keyboard movement
         this.updateCameraMovement(delta);
 
         this.physics.step(delta);
@@ -376,6 +533,7 @@ export class Game {
                 const explosionPos = enemy.mesh.position.clone();
                 explosionPos.y += 0.5;
                 this.particleSystem.createExplosion(explosionPos, enemy.type === 'boss' ? 'large' : enemy.type === 'tank' ? 'medium' : 'small');
+                if (enemy.type === 'boss' || enemy.type === 'tank') this.audio.play('bossDeath');
                 // Second smaller explosion for effect
                 setTimeout(() => {
                     this.particleSystem.createExplosion(explosionPos, 'small');
@@ -386,15 +544,16 @@ export class Game {
             }
         }
 
-        for (const tower of this.towers) tower.update(delta, this.enemies, this.projectileManager, this.time);
+        for (const tower of this.towers) tower.update(delta, this.enemies, this.projectileManager, this.time, this.audio);
         this.projectileManager.checkCollisions(this.enemies);
         this.projectileManager.update(delta);
         this.particleSystem.update(delta, this.camera);
+        this.agentController.update(delta);
 
         if (this.waveInProgress && this.enemiesToSpawn.length === 0 && this.enemies.length === 0) {
             this.waveInProgress = false;
             this.wave++;
-            this.energy += 100 + this.wave * 10;
+            this.energy += SETTINGS.economy.waveBonusBase + this.wave * SETTINGS.economy.waveBonusPerWave;
             this.updateUI();
             setTimeout(() => this.startWave(), 3000);
         }
@@ -411,10 +570,14 @@ export class Game {
         const livesValue = document.getElementById('lives');
         livesValue.classList.toggle('low', this.lives <= 5);
 
-        const costs = { blaster: 50, cannon: 120, sniper: 200 };
         for (const btn of document.querySelectorAll('.tower-btn')) {
             const type = btn.dataset.type;
-            const cost = costs[type] || 9999;
+            const levelInput = btn.querySelector('.tower-level-hidden');
+            const level = clampTowerLevel(parseInt(levelInput?.value || '1', 10));
+            const towerStats = getTowerStats(type, level);
+            const cost = towerStats.cost;
+            const costNode = btn.querySelector('.cost');
+            if (costNode) costNode.textContent = `${cost}`;
             btn.classList.toggle('insufficient', this.energy < cost);
         }
 

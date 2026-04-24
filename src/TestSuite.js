@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { PhysicsBody } from './Physics.js';
 import { Enemy } from './Enemy.js';
 import { Tower } from './Tower.js';
+import { SETTINGS } from './settings.js';
 
 export class TestSuite {
     constructor(game) {
@@ -106,8 +107,10 @@ export class TestSuite {
         }
         
         const moved = testEnemy.mesh.position.distanceTo(startPos) > 1;
-        const notFloating = testEnemy.mesh.position.y < 2;
-        const notClipped = testEnemy.mesh.position.y >= 0;
+        // Grounded height depends on enemy radius, and radius now scales with world scale.
+        const expectedGroundY = testEnemy.body.radius;
+        const notFloating = Math.abs(testEnemy.mesh.position.y - expectedGroundY) < 0.55;
+        const notClipped = testEnemy.mesh.position.y >= expectedGroundY - 0.2;
         
         testEnemy.destroy();
         
@@ -214,7 +217,7 @@ export class TestSuite {
     }
     
     async testPerformance() {
-        this.log('Testing performance (60 FPS target)...', 'info');
+        this.log('Testing performance with scalability guard...', 'info');
         
         // Spawn many enemies and projectiles
         for (let i = 0; i < 20; i++) {
@@ -243,11 +246,12 @@ export class TestSuite {
         }
         this.game.enemies = [];
         
-        if (fps >= 55) {
+        const threshold = SETTINGS.performance.lowFpsThreshold;
+        if (fps >= threshold) {
             this.log(`Performance: ${fps.toFixed(1)} FPS - OK`, 'pass');
             return true;
         } else {
-            this.log(`Performance: ${fps.toFixed(1)} FPS - Below target`, 'fail');
+            this.log(`Performance: ${fps.toFixed(1)} FPS - Below target (${threshold})`, 'fail');
             return false;
         }
     }

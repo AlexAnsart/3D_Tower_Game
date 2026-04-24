@@ -1,82 +1,145 @@
-# Kingdom Defense - 3D Physics Tower Defense
+# Kingdom Defense - 3D Tower Defense
 
-A beautiful, natural-styled 3D Tower Defense game built with Three.js and a custom physics engine.
+3D tower defense built with Three.js and a custom physics engine.
 
-## How to Run
+## Run Locally
 
-This game uses ES6 modules and Three.js from a CDN, so you need to serve it via a local HTTP server. Opening `index.html` directly in a browser will NOT work due to CORS restrictions.
+Serve the project with a local HTTP server (do not open `index.html` directly).
 
-### Option 1: npx serve (Recommended)
 ```bash
 npx serve .
-# Then open http://localhost:3000
+# open http://localhost:3000
 ```
 
-### Option 2: Python
+Alternative:
+
 ```bash
-# Python 3
 python -m http.server 8080
-# Then open http://localhost:8080
-
-# Python 2
-python -m SimpleHTTPServer 8080
+# open http://localhost:8080
 ```
 
-### Option 3: Node.js http-server
+## AI Agent (Kimi)
+
+The game can run an assistant AI that places towers when enabled in `src/settings.js`.
+
+1. Start the AI proxy:
+
 ```bash
-npx http-server -p 8080
-# Then open http://localhost:8080
+cd server
+npm install
+copy .env.example .env
 ```
 
-### Option 4: PHP
+1. Open `server/.env` and set:
+
 ```bash
-php -S localhost:8080
+KIMI_API_KEY=fw_your_real_key
+KIMI_MODEL=kimi-k2p6
+PORT=8787
 ```
+
+1. Run the proxy:
+
+```bash
+npm start
+```
+
+1. Start the game as usual (`npx serve .`), then configure AI in `src/settings.js`:
+
+   - `ai.enabled`
+   - `ai.minGoldToAct`
+   - `ai.decisionIntervalMs`
+
+Important: keep `KIMI_API_KEY` only in `server/.env` (never in frontend files).
+
+## Core Gameplay
+
+- Towers: `Archer`, `Cannon`, `Mortar`, `Mage`
+- Tower levels: `1` to `10` (cost, size, range, damage, cooldown scale by level)
+- Tower deletion: select a placed tower, then delete with the UI button or `Delete`/`Backspace`
+- Waves scale over time (HP + speed multipliers)
+- Global visual scaling and gameplay tuning are centralized in settings
 
 ## Controls
 
 | Action | Control |
-|--------|---------|
-| Rotate Camera | Left Click + Drag |
-| Zoom | Scroll Wheel |
-| Pan | Right Click + Drag |
-| Move Forward | Z or Up Arrow |
-| Move Backward | S or Down Arrow |
-| Move Left | Q or Left Arrow |
-| Move Right | D or Right Arrow |
-| Move Camera Up | Up Arrow |
-| Move Camera Down | Down Arrow |
-| Place Tower | Click stone platform |
-| Select Tower Type | Click tower button |
-| Toggle Debug | F3 |
-| Start Next Wave | Space |
+| --- | --- |
+| Rotate camera | Left click + drag |
+| Zoom | Mouse wheel |
+| Pan | Right click + drag |
+| Move camera | `ZQSD` |
+| Move camera up/down | `Up` / `Down` |
+| Place tower | Left click on valid terrain |
+| Select tower type | Tower card in bottom panel |
+| Select tower level | Level dropdown on each tower card |
+| Delete selected tower | Delete button or `Delete`/`Backspace` |
+| Start wave (when idle) | `Space` |
+| Toggle debug panel | `F3` |
 
-## Tower Types
+## Configuration
 
-| Tower | Cost | Range | Damage | Special |
-|-------|------|-------|--------|---------|
-| Archer | 50 | 12 | 25 | Rapid fire arrows |
-| Cannon | 120 | 16 | 80 | Arcing cannonballs |
-| Mage | 200 | 28 | 200 | Piercing magic bolts |
+All important tuning values are in:
 
-## Enemy Types
+- `src/settings.js`
 
-| Enemy | HP | Speed | Reward |
-|-------|-----|-------|--------|
-| Goblin | 100 | 3 | 10 |
-| Wolf | 60 | 5 | 15 |
-| Knight | 300 | 1.5 | 25 |
-| Dragon | 1000 | 1 | 100 |
+This includes:
 
-## Features
+- economy (starting gold/lives, refund ratio, wave rewards)
+- world scale
+- enemy base stats
+- wave multipliers
+- tower base stats + level scaling
+- projectile behavior
+- VFX budgets
+- audio setup and optional asset filenames
 
-- **Detailed 3D Models**: Goblin with club, Wolf with tail, Knight with shield/sword, Dragon with wings
-- **Natural Environment**: Green grass, dirt road, trees, rocks, flowers, pond, clouds
-- **Custom Physics**: Continuous collision detection, no clipping
-- **Self-Testing**: Automatic physics validation on startup
-- **Keyboard Navigation**: ZQSD + Arrow keys for camera movement
+## Optional Assets (Models + Sounds)
 
-## Browser Compatibility
-Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+External assets are optional. If files are missing, the game falls back automatically (no crash).
 
-Requires WebGL 2.0 support.
+### Optional enemy models (GLB)
+
+Put files in:
+
+- `assets/models/enemies`
+
+Expected filenames:
+
+- `basic.glb`
+- `fast.glb`
+- `tank.glb`
+- `boss.glb`
+
+### Optional sounds
+
+Put files in:
+
+- `assets/audio`
+
+Expected filenames:
+
+- `cannon_shot.ogg`
+- `mortar_shot.ogg`
+- `mage_fire.ogg`
+- `boss_death.ogg`
+- `impact_heavy.ogg`
+
+If not found, `AudioManager` uses procedural WebAudio fallback.
+
+## Project Structure (Important Files)
+
+- `src/Game.js` - main game loop, wave flow, input, UI sync
+- `src/Tower.js` - tower behavior, targeting, firing, placement animation
+- `src/Enemy.js` - enemy logic and optional model loading fallback
+- `src/Projectile.js` - projectile movement, collisions, AOE effects
+- `src/ParticleSystem.js` - impacts, explosions, screen shake
+- `src/audio/AudioManager.js` - sound routing (file + procedural fallback)
+- `src/assets/ModelFactory.js` - optional GLB loading helpers
+- `src/settings.js` - central configuration
+- `src/ai/AgentController.js` - AI decision trigger and validated tower placement
+- `server/src/index.js` - secure proxy endpoint for Kimi calls
+
+## Notes
+
+- Requires WebGL2-capable browser.
+- Recommended modern browsers: Chrome, Edge, Firefox, Safari (recent versions).

@@ -1,6 +1,7 @@
 /** @fileoverview Large map: flat arena (path + build) and relief only beyond the arena */
 
 import * as THREE from 'three';
+import { SETTINGS } from './settings.js';
 
 export class Board {
     static PLAY_GROUND_Y = 0;
@@ -19,6 +20,7 @@ export class Board {
         this.clouds = [];
         this.occupiedFeatures = [];
         this.pathSegments = this.buildPathSegments();
+        this.decorScale = SETTINGS.world.globalScale;
 
         this.createGround();
         this.createInfiniteGround();
@@ -257,6 +259,13 @@ export class Board {
         const e = this.mapExtent * 0.94;
         const y = Board.PLAY_GROUND_Y;
         const pick = () => (Math.random() * 2 - 1) * e;
+        const spawnPoint = this.path?.waypoints?.[0];
+        const endPoint = this.path?.waypoints?.[this.path.waypoints.length - 1];
+        const isNearCriticalPathPoint = (x, z, radius) => {
+            if (spawnPoint && Math.hypot(x - spawnPoint.x, z - spawnPoint.z) < radius) return true;
+            if (endPoint && Math.hypot(x - endPoint.x, z - endPoint.z) < radius) return true;
+            return false;
+        };
 
         for (let i = 0; i < 320; i++) {
             const x = pick();
@@ -286,6 +295,7 @@ export class Board {
             if (!this.isInPlayField(x, z)) continue;
             const dPath = this.distanceToPath(x, z);
             if (dPath < 2.2) continue;
+            if (isNearCriticalPathPoint(x, z, 12)) continue;
             const t = n % 23;
             if (t < 3) {
                 if (dPath < 5) continue;
@@ -558,7 +568,7 @@ export class Board {
         const y = this.getTerrainHeight(x, z);
         const tree = new THREE.Group();
         tree.position.set(x, y, z);
-        tree.scale.setScalar(scale);
+        tree.scale.setScalar(scale * this.decorScale);
 
         const trunk = new THREE.Mesh(
             new THREE.CylinderGeometry(0.16, 0.26, 2.2, 7),
@@ -607,7 +617,8 @@ export class Board {
             new THREE.DodecahedronGeometry(0.5 * scale, 0),
             new THREE.MeshStandardMaterial({ color: 0x6f6f6f, roughness: 0.95, metalness: 0.04 })
         );
-        rock.position.set(x, y + 0.26 * scale, z);
+        rock.position.set(x, y + 0.26 * scale * this.decorScale, z);
+        rock.scale.setScalar(this.decorScale);
         rock.rotation.set(Math.random(), Math.random(), Math.random());
         rock.castShadow = true;
         rock.receiveShadow = true;
@@ -630,7 +641,7 @@ export class Board {
             const x = (Math.random() - 0.5) * this.mapExtent * 2.7;
             const z = (Math.random() - 0.5) * this.mapExtent * 2.7;
             if (this.isInPlayField(x, z)) continue;
-            const scale = 0.25 + Math.random() * 2.1;
+            const scale = (0.25 + Math.random() * 2.1) * this.decorScale;
             if (!this.canPlaceFeature(x, z, 0.55 * scale, { avoidPath: true, maxSlope: 1.3, register: true })) continue;
 
             const y = this.getTerrainHeight(x, z);
@@ -659,14 +670,16 @@ export class Board {
                 new THREE.CylinderGeometry(0.012, 0.012, 0.24, 4),
                 new THREE.MeshStandardMaterial({ color: 0x2a5a2a })
             );
-            stem.position.set(x, y + 0.12, z);
+            stem.position.set(x, y + 0.12 * this.decorScale, z);
+            stem.scale.setScalar(this.decorScale);
             this.scene.add(stem);
 
             const petal = new THREE.Mesh(
                 new THREE.SphereGeometry(0.05, 5, 5),
                 new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)] })
             );
-            petal.position.set(x, y + 0.26, z);
+            petal.position.set(x, y + 0.26 * this.decorScale, z);
+            petal.scale.setScalar(this.decorScale);
             this.scene.add(petal);
         }
     }

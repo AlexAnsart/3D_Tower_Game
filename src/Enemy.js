@@ -2,6 +2,8 @@
 
 import * as THREE from 'three';
 import { PhysicsBody } from './Physics.js';
+import { SETTINGS } from './settings.js';
+import { ModelFactory } from './assets/ModelFactory.js';
 
 export class Enemy {
     constructor(scene, physics, path, type = 'basic', options = {}) {
@@ -14,34 +16,43 @@ export class Enemy {
         this.frozen = false;
         this.reachedEnd = false;
 
-        const statsMap = {
-            basic: { hp: 100, speed: 7.5, radius: 0.7, reward: 10 },
-            fast: { hp: 60, speed: 12.5, radius: 0.5, reward: 15 },
-            tank: { hp: 300, speed: 3.75, radius: 1.0, reward: 25 },
-            boss: { hp: 1000, speed: 2.5, radius: 1.5, reward: 100 }
-        };
+        const statsMap = SETTINGS.enemies;
         const stats = statsMap[type] || statsMap.basic;
         const hpMultiplier = Math.max(1, options.hpMultiplier ?? 1);
+        const speedMultiplier = Math.max(1, options.speedMultiplier ?? 1);
         const scaledHp = Math.round(stats.hp * hpMultiplier);
 
         this.maxHp = scaledHp;
         this.hp = scaledHp;
-        this.speed = stats.speed;
+        this.speed = stats.speed * speedMultiplier;
         this.reward = stats.reward;
 
         this.mesh = this.createModel(type);
+        this.mesh.scale.setScalar(SETTINGS.world.globalScale * stats.size);
         this.scene.add(this.mesh);
 
         this.createHealthBar();
 
         const startPos = path.getPositionAt(0);
-        this.body = new PhysicsBody(startPos, stats.radius, 1, 'kinematic');
+        this.body = new PhysicsBody(startPos, stats.radius * SETTINGS.world.globalScale, 1, 'kinematic');
         this.body.gravityScale = 0;
         this.body.userData = { enemy: this };
         this.physics.addBody(this.body);
 
         this.animTime = Math.random() * 100;
         this.walkCycle = 0;
+        this.attachOptionalModel(type);
+    }
+
+    async attachOptionalModel(type) {
+        const external = await ModelFactory.loadOptionalEnemyModel(type);
+        if (!external || !this.mesh) return;
+        const wrapped = ModelFactory.markCastShadow(external);
+        wrapped.scale.setScalar(SETTINGS.world.globalScale * 0.9);
+        this.scene.remove(this.mesh);
+        this.mesh = wrapped;
+        this.mesh.position.copy(this.body.position);
+        this.scene.add(this.mesh);
     }
 
     createModel(type) {

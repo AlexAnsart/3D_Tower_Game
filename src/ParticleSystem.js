@@ -1,6 +1,7 @@
 /** @fileoverview Natural particle effects with visible explosions */
 
 import * as THREE from 'three';
+import { SETTINGS } from './settings.js';
 
 class Particle {
     constructor(position, velocity, life, color, size, type = 'dust') {
@@ -30,7 +31,7 @@ class Particle {
 }
 
 export class ParticleSystem {
-    constructor(scene, maxParticles = 4000) {
+    constructor(scene, maxParticles = SETTINGS.performance.maxParticles) {
         this.scene = scene;
         this.maxParticles = maxParticles;
         this.particles = [];
@@ -62,7 +63,8 @@ export class ParticleSystem {
         const configs = {
             small: { count: 40, spread: 4, life: 0.5, colors: [0x8a6a4a, 0x7a5a3a, 0x9a7a5a] },
             medium: { count: 100, spread: 8, life: 0.8, colors: [0x8a6a4a, 0x7a5a3a, 0xaaaaaa, 0xcc8844] },
-            large: { count: 200, spread: 12, life: 1.2, colors: [0x5a3a1a, 0x8a6a4a, 0xaaaaaa, 0xdd9944, 0xffaa55] }
+            large: { count: 200, spread: 12, life: 1.2, colors: [0x5a3a1a, 0x8a6a4a, 0xaaaaaa, 0xdd9944, 0xffaa55] },
+            massive: { count: 340, spread: 18, life: 1.6, colors: [0x2f1a12, 0x6f4f2e, 0xaa7a4a, 0xe5a15a] }
         };
 
         const config = configs[type] || configs.medium;
@@ -108,12 +110,10 @@ export class ParticleSystem {
             this.particles.push(new Particle(position, velocity, 0.3, flashColor, 0.25, 'spark'));
         }
 
-        if (type === 'large') {
-            this.shakeIntensity = 0.4;
-            this.shakeDuration = 0.25;
-        } else if (type === 'medium') {
-            this.shakeIntensity = 0.2;
-            this.shakeDuration = 0.15;
+        // Map shake is reserved for mortar impacts only.
+        if (type === 'massive') {
+            this.shakeIntensity = 0.85;
+            this.shakeDuration = 0.38;
         }
     }
 

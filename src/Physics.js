@@ -55,7 +55,7 @@ export class PhysicsWorld {
         this.gravity = new THREE.Vector3(0, -20, 0);
         this.subSteps = 8; // High substeps for stability
         this.timeScale = 1;
-        this.maxVelocity = 50;
+        this.maxVelocity = 260;
         this.debugInfo = {
             collisions: 0,
             clips: 0,

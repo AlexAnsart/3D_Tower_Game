@@ -2,9 +2,10 @@
 
 import * as THREE from 'three';
 import { PhysicsBody } from './Physics.js';
+import { SETTINGS } from './settings.js';
 
 export class Projectile {
-    constructor(scene, physics, position, direction, speed, damage, type, target = null) {
+    constructor(scene, physics, position, direction, speed, damage, type, target = null, options = {}) {
         this.scene = scene;
         this.physics = physics;
         this.damage = damage;
@@ -16,15 +17,19 @@ export class Projectile {
         this.piercing = type === 'sniper';
         this.hitEnemies = new Set();
         this.enemyHitExplosionDone = false;
+        this.options = options;
+        this.sizeMultiplier = Math.max(0.35, options.sizeMultiplier ?? 1);
 
         this.mesh = this.createMesh(type);
+        this.mesh.scale.setScalar(this.sizeMultiplier);
         this.mesh.position.copy(position);
         this.scene.add(this.mesh);
 
-        this.body = new PhysicsBody(position, 0.25, 0.1, 'dynamic');
+        const cfg = SETTINGS.projectiles[type] || SETTINGS.projectiles.blaster;
+        this.body = new PhysicsBody(position, cfg.radius * this.sizeMultiplier, 0.1, 'dynamic');
         this.body.velocity.copy(direction.multiplyScalar(speed));
         this.body.restitution = 0.2;
-        this.body.gravityScale = type === 'cannon' ? 0.8 : 0.1;
+        this.body.gravityScale = cfg.gravityScale;
         this.body.userData = { projectile: this };
         this.physics.addBody(this.body);
 
@@ -71,6 +76,10 @@ export class Projectile {
             const ball = new THREE.Mesh(ballGeo, ballMat);
             ball.castShadow = true;
             group.add(ball);
+        } else if (type === 'mortar') {
+            const ballGeo = new THREE.SphereGeometry(0.58, 14, 14);
+            const ballMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.95 });
+            group.add(new THREE.Mesh(ballGeo, ballMat));
         } else if (type === 'sniper') {
             // Magic bolt - bigger and brighter
             const boltGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.8, 8);
@@ -112,7 +121,7 @@ export class Projectile {
         const positions = new Float32Array(maxPoints * 3);
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-        const colors = { blaster: 0x6a4a2a, cannon: 0x333333, sniper: 0x4a6aaa };
+        const colors = { blaster: 0x6a4a2a, cannon: 0x333333, mortar: 0x111111, sniper: 0x4a6aaa };
         const material = new THREE.LineBasicMaterial({
             color: colors[type] || 0x6a4a2a,
             transparent: true,
@@ -151,7 +160,7 @@ export class Projectile {
             this.mesh.lookAt(lookTarget);
         }
 
-        if (this.type === 'sniper' && this.target && this.target.alive && !this.hitEnemies.has(this.target)) {
+        if (this.type === 'sniper' && !this.options.flame && this.target && this.target.alive && !this.hitEnemies.has(this.target)) {
             const targetPos = this.target.mesh.position.clone();
             targetPos.y += this.target.body ? this.target.body.radius : 0.5;
             const toTarget = targetPos.sub(this.body.position);
@@ -164,7 +173,13 @@ export class Projectile {
         }
 
         this.updateTrail();
-        if (this.body.position.y <= 0.2) this.alive = false;
+        const groundContactY = this.body.radius + 0.02;
+        if (this.type === 'blaster') {
+            // Archer arrows should vanish instantly on first ground contact.
+            if (this.body.position.y <= groundContactY) this.alive = false;
+        } else if (this.body.position.y <= 0.2) {
+            this.alive = false;
+        }
     }
 
     hit(enemy) {
@@ -192,8 +207,9 @@ export class ProjectileManager {
         this.projectiles = [];
     }
 
-    spawn(position, direction, speed, damage, type, target) {
-        const proj = new Projectile(this.scene, this.physics, position, direction, speed, damage, type, target);
+    spawn(position, direction, speed, damage, type, target, options) {
+        if (this.projectiles.length >= SETTINGS.performance.maxProjectiles) return null;
+        const proj = new Projectile(this.scene, this.physics, position, direction, speed, damage, type, target, options);
         this.projectiles.push(proj);
         return proj;
     }
@@ -203,11 +219,11 @@ export class ProjectileManager {
             const proj = this.projectiles[i];
             proj.update(delta);
             if (!proj.alive) {
-                const isCannonEnemyHit = proj.type === 'cannon' && proj.enemyHitExplosionDone;
+                const isCannonEnemyHit = (proj.type === 'cannon' || proj.type === 'mortar') && proj.enemyHitExplosionDone;
                 if (!isCannonEnemyHit) {
                     this.particleSystem.createExplosion(
                         proj.mesh.position.clone(),
-                        proj.type === 'cannon' ? 'large' : 'small'
+                        proj.type === 'mortar' ? 'massive' : proj.type === 'cannon' ? 'large' : 'small'
                     );
                 }
                 proj.destroy();
@@ -224,13 +240,34 @@ export class ProjectileManager {
                 const dist = proj.body.position.distanceTo(enemy.body.position);
                 if (dist <= proj.body.radius + enemy.body.radius) {
                     const hadHit = proj.hit(enemy);
-                    if (hadHit && proj.type === 'cannon' && this.particleSystem) {
+                    if (hadHit && (proj.type === 'cannon' || proj.type === 'mortar') && this.particleSystem) {
                         const burst = enemy.mesh.position.clone();
                         burst.y += 0.65;
-                        this.particleSystem.createExplosion(burst, 'large');
+                        this.particleSystem.createExplosion(burst, proj.type === 'mortar' ? 'massive' : 'large');
+                        if (proj.type === 'mortar') {
+                            this.applyMortarAoe(enemy, enemies, proj.damage);
+                        }
                     }
                     if (!proj.alive) break;
                 }
+            }
+        }
+    }
+
+    applyMortarAoe(mainEnemy, enemies, damage) {
+        const center = mainEnemy.body.position.clone();
+        const radius = SETTINGS.projectiles.mortar.aoeRadius;
+        for (const enemy of enemies) {
+            if (!enemy.alive) continue;
+            const d = enemy.body.position.distanceTo(center);
+            if (d > radius) continue;
+            if (enemy.type === 'basic' || enemy.type === 'fast') {
+                enemy.takeDamage(enemy.hp + 1);
+                const dir = enemy.body.position.clone().sub(center).normalize();
+                enemy.body.position.add(dir.multiplyScalar(2.3));
+            } else {
+                const falloff = 1 - d / radius;
+                enemy.takeDamage(damage * Math.max(0.2, falloff));
             }
         }
     }

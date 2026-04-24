@@ -1,10 +1,14 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Game } from './Game.js';
 import { TestSuite } from './TestSuite.js';
+import { clampTowerLevel, SETTINGS } from './settings.js';
 
 window.game = null;
 window.testSuite = null;
+window.closeTestOverlay = function() {
+    const overlay = document.getElementById('test-overlay');
+    if (overlay) overlay.style.display = 'none';
+};
 
 window.startGame = async function() {
     document.getElementById('start-screen').style.display = 'none';
@@ -29,22 +33,16 @@ window.startGame = async function() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);
     // Very light fog for depth only
-    scene.fog = new THREE.Fog(0x87CEEB, 340, 1900);
+    scene.fog = new THREE.Fog(0x87CEEB, 340 * SETTINGS.world.globalScale, 1900 * SETTINGS.world.globalScale);
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2600);
-    // Higher angle for bigger map
-    camera.position.set(0, 80, 120);
+    // Spawn near the map center at low altitude for spectator navigation
+    camera.position.set(0, 14, 0);
 
-    const controls = new OrbitControls(camera, canvas);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.maxPolarAngle = Math.PI / 2.1;
-    controls.minDistance = 24;
-    controls.maxDistance = 900;
-    controls.target.set(0, 0, 0);
-    controls.autoRotate = false;
-    // Disable default keys so we can use ZQSD
-    controls.enableKeys = false;
+    const controls = {
+        domElement: canvas,
+        update() {}
+    };
 
     window.game = new Game(scene, camera, controls, renderer);
 
@@ -88,6 +86,12 @@ window.startGame = async function() {
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            window.closeTestOverlay();
+        }
+    });
 };
 
 window.selectTower = function(type) {
@@ -102,6 +106,50 @@ window.selectTower = function(type) {
 
     if (window.game) {
         window.game.selectedTowerType = nextSelectedType;
+        if (nextSelectedType) {
+            const btn = document.querySelector(`.tower-btn[data-type="${nextSelectedType}"]`);
+            const level = clampTowerLevel(parseInt(btn?.querySelector('.tower-level-hidden')?.value || '1', 10));
+            window.game.selectedTowerLevel = level;
+        }
         window.game.updatePreview();
+        window.game.updateUI();
     }
 };
+
+window.setTowerLevel = function(type, level) {
+    const lv = clampTowerLevel(parseInt(level, 10));
+    const btn = document.querySelector(`.tower-btn[data-type="${type}"]`);
+    if (btn) {
+        const hidden = btn.querySelector('.tower-level-hidden');
+        const trigger = btn.querySelector('.tower-level-trigger');
+        const options = btn.querySelectorAll('.tower-level-option');
+        if (hidden) hidden.value = `${lv}`;
+        if (trigger) trigger.textContent = `Level ${lv}`;
+        options.forEach((option, index) => {
+            option.classList.toggle('active', index + 1 === lv);
+        });
+        btn.querySelector('.tower-level-picker')?.classList.remove('open');
+    }
+    if (window.game && window.game.selectedTowerType === type) {
+        window.game.selectedTowerLevel = lv;
+        window.game.updatePreview();
+    }
+    if (window.game) window.game.updateUI();
+};
+
+window.toggleTowerLevelMenu = function(event, type) {
+    event.stopPropagation();
+    const btn = document.querySelector(`.tower-btn[data-type="${type}"]`);
+    if (!btn) return;
+    const picker = btn.querySelector('.tower-level-picker');
+    if (!picker) return;
+    const openPickers = document.querySelectorAll('.tower-level-picker.open');
+    openPickers.forEach((node) => {
+        if (node !== picker) node.classList.remove('open');
+    });
+    picker.classList.toggle('open');
+};
+
+document.addEventListener('click', () => {
+    document.querySelectorAll('.tower-level-picker.open').forEach((node) => node.classList.remove('open'));
+});

@@ -161,13 +161,72 @@ export class Path {
     }
 
     createPathMarkers() {
-        const startPos = this.waypoints[0].clone().add(new THREE.Vector3(-4.5, 0, 0));
+        const startPos = this.waypoints[0].clone();
         const endPos = this.waypoints[this.waypoints.length - 1].clone().add(new THREE.Vector3(4.5, 0, 0));
 
-        // Start banner
-        this.createBanner(startPos, 0x3a7a3a, 'START');
+        // Enemy spawn portal
+        this.createSpawnPortal(startPos);
         // End gate
         this.createGate(endPos);
+    }
+
+    createSpawnPortal(position) {
+        const group = new THREE.Group();
+        group.position.copy(position);
+        group.position.y += Path.PATH_HEIGHT;
+
+        const ringGeo = new THREE.TorusGeometry(2.0, 0.24, 16, 48);
+        const ringMat = new THREE.MeshStandardMaterial({
+            color: 0x2f5b8f,
+            emissive: 0x14325a,
+            emissiveIntensity: 0.45,
+            roughness: 0.35,
+            metalness: 0.6
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 1.8;
+        ring.castShadow = true;
+        ring.receiveShadow = true;
+        group.add(ring);
+
+        const coreGeo = new THREE.CircleGeometry(1.55, 32);
+        const coreMat = new THREE.MeshStandardMaterial({
+            color: 0x6ac7ff,
+            emissive: 0x2e95d3,
+            emissiveIntensity: 1.1,
+            transparent: true,
+            opacity: 0.78,
+            side: THREE.DoubleSide
+        });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        core.position.y = 1.8;
+        group.add(core);
+
+        const baseGeo = new THREE.CylinderGeometry(2.6, 2.9, 0.35, 20);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x4a4f5f, roughness: 0.85, metalness: 0.12 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = 0.18;
+        base.castShadow = true;
+        base.receiveShadow = true;
+        group.add(base);
+
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const rune = new THREE.Mesh(
+                new THREE.BoxGeometry(0.18, 0.06, 0.52),
+                new THREE.MeshStandardMaterial({
+                    color: 0x8ed7ff,
+                    emissive: 0x4ba7df,
+                    emissiveIntensity: 0.7
+                })
+            );
+            rune.position.set(Math.cos(angle) * 2.35, 0.36, Math.sin(angle) * 2.35);
+            rune.rotation.y = -angle;
+            group.add(rune);
+        }
+
+        this.scene.add(group);
     }
 
     createBanner(position, color, text) {
