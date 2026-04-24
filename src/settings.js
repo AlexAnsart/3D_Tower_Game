@@ -1,17 +1,30 @@
 export const SETTINGS = {
     ai: {
-        enabled: true,
-        minGoldToAct: 200,
+        enabled: false,
+        minGoldToAct: 100,
         decisionIntervalMs: 2500,
         maxCandidateSpots: 80,
         blockSameTypeConsecutively: true,
         minDistanceFromLastPlacement: 12,
         model: 'kimi-k2p6',
         endpoint: 'http://localhost:8787/api/ai/decide',
-        requestTimeoutMs: 5000
+        requestTimeoutMs: 5000,
+        /** Local combat lookahead (no LLM). mode: assist = enrich LLM context; auto = pick best without API */
+        lookahead: {
+            enabled: true,
+            mode: 'assist',
+            horizonSec: 14,
+            stepSec: 0.1,
+            maxCandidatesToScore: 56,
+            topKForContext: 6,
+            leakPenalty: 3200,
+            costWeight: 0.06,
+            minScoreToAct: 8,
+            minScoreWhenQuiet: 45
+        }
     },
     economy: {
-        startingGold: 100000,
+        startingGold: 500,
         startingLives: 20,
         towerSellRefundRatio: 0.65,
         waveBonusBase: 100,

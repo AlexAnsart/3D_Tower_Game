@@ -66,8 +66,27 @@ function buildUserPrompt(context, strictMode) {
         }
     }
 
+    const lookaheadHint = (() => {
+        const la = context?.lookahead;
+        if (!la || !la.topK || la.topK.length === 0) return '';
+        const lines = [
+            'Lookahead simulation (prefer matching a top-scoring candidate unless you have a strong reason not to):',
+            `- Baseline (no new tower) over ${la.horizonSec}s: damage≈${la.baseline?.damage}, leaks=${la.baseline?.leaks}`,
+            ...la.topK.slice(0, 6).map(
+                (c, i) =>
+                    `  ${i + 1}. score=${c.score} ${c.towerType} L${c.level} spotId=${c.spotId} (Δdmg=${c.deltaDamage} Δleaks=${c.deltaLeaks} cost=${c.cost})`
+            )
+        ];
+        if (la.recommended) {
+            lines.push(
+                `Suggested: ${la.recommended.towerType} L${la.recommended.level} spotId=${la.recommended.spotId} (score=${la.recommended.score}).`
+            );
+        }
+        return `${lines.join('\n')}\n`;
+    })();
+
     const prefix = strictMode ? 'Return one JSON object only. No prose.' : 'Return JSON only.';
-    return `${prefix}\n${rules.join('\n')}\nContext:\n${JSON.stringify(context)}`;
+    return `${prefix}\n${lookaheadHint}${rules.join('\n')}\nContext:\n${JSON.stringify(context)}`;
 }
 
 async function callFireworks({ apiKey, model, context, timeoutMs, strictMode = false }) {

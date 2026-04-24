@@ -1,4 +1,4 @@
-/** @fileoverview Main game controller with ZQSD navigation and fixed aiming */
+/** @fileoverview Main game controller with standard keyboard/mouse navigation */
 
 import * as THREE from 'three';
 import { Board } from './Board.js';
@@ -66,8 +66,12 @@ export class Game {
         this.cameraYaw = 0;
         this.mouseLookSensitivity = 0.0025;
         this.isLookDragging = false;
+        this.lookDragButton = -1;
         this.lastMouseX = 0;
         this.lastMouseY = 0;
+        this.lookDragStartX = 0;
+        this.lookDragStartY = 0;
+        this.lookDragMoved = false;
 
         this.setupLights();
         this.setupInput();
@@ -106,16 +110,28 @@ export class Game {
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         canvas.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
         canvas.addEventListener('mousedown', (e) => {
-            if (e.button !== 2) return;
+            if (e.button !== 0 && e.button !== 2) return;
             this.isLookDragging = true;
+            this.lookDragButton = e.button;
             this.lastMouseX = e.clientX;
             this.lastMouseY = e.clientY;
+            this.lookDragStartX = e.clientX;
+            this.lookDragStartY = e.clientY;
+            this.lookDragMoved = false;
             e.preventDefault();
         });
         window.addEventListener('mouseup', (e) => {
-            if (e.button === 2) this.isLookDragging = false;
+            const isEndingCurrentDrag = this.isLookDragging && e.button === this.lookDragButton;
+            if (!isEndingCurrentDrag) return;
+            this.isLookDragging = false;
+            const shouldPlaceTower = e.button === 0 && !this.lookDragMoved;
+            this.lookDragButton = -1;
+            if (shouldPlaceTower) this.handleClick();
         });
-        canvas.addEventListener('mouseleave', () => { this.isLookDragging = false; });
+        canvas.addEventListener('mouseleave', () => {
+            this.isLookDragging = false;
+            this.lookDragButton = -1;
+        });
 
         canvas.addEventListener('mousemove', (e) => {
             this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -125,18 +141,15 @@ export class Game {
             if (this.isLookDragging) {
                 const dx = e.clientX - this.lastMouseX;
                 const dy = e.clientY - this.lastMouseY;
+                const dragDistance = Math.hypot(e.clientX - this.lookDragStartX, e.clientY - this.lookDragStartY);
+                if (dragDistance > 3) this.lookDragMoved = true;
                 this.lastMouseX = e.clientX;
                 this.lastMouseY = e.clientY;
                 this.applyFPSLook(dx, dy);
             }
         });
 
-        canvas.addEventListener('click', (e) => {
-            if (e.target.closest('.tower-panel') || e.target.closest('.stat-box') || e.target.closest('.wave-card')) return;
-            this.handleClick();
-        });
-
-        // Spectator controls: ZQSD + Space/C
+        // Spectator controls: WASD + ZQSD + Space/C/Ctrl
         window.addEventListener('keydown', (e) => {
             this.keys[e.key.toLowerCase()] = true;
             this.keys[e.code] = true;
@@ -170,12 +183,12 @@ export class Game {
     }
 
     updateCameraMovement(delta) {
-        const forward = this.keys['z'];
-        const backward = this.keys['s'];
-        const left = this.keys['q'];
-        const right = this.keys['d'];
+        const forward = this.keys['z'] || this.keys['w'] || this.keys.KeyW;
+        const backward = this.keys['s'] || this.keys.KeyS;
+        const left = this.keys['q'] || this.keys['a'] || this.keys.KeyA;
+        const right = this.keys['d'] || this.keys.KeyD;
         const goUp = this.keys['space'] || this.keys[' '];
-        const goDown = this.keys['c'];
+        const goDown = this.keys['c'] || this.keys['control'] || this.keys.ControlLeft || this.keys.ControlRight;
 
         const speedBoost = this.keys['shift'] ? 1.8 : 1;
         const moveSpeed = this.cameraSpeed * speedBoost * delta;

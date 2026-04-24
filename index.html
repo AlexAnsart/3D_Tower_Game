@@ -337,6 +337,45 @@
             display: none;
         }
         #debug-panel.active { display: block; }
+        .help-panel {
+            position: absolute;
+            right: 16px;
+            bottom: 18px;
+            width: min(360px, calc(100vw - 32px));
+            pointer-events: auto;
+            z-index: 25;
+        }
+        .help-panel details {
+            background: linear-gradient(160deg, rgba(24, 39, 61, 0.85), rgba(12, 22, 38, 0.84));
+            border: 1px solid var(--hud-border);
+            border-radius: 12px;
+            box-shadow: var(--hud-shadow);
+            backdrop-filter: var(--hud-blur);
+            overflow: hidden;
+        }
+        .help-panel summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 10px 14px;
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #d8e8fb;
+            font-weight: 700;
+            user-select: none;
+        }
+        .help-panel summary::-webkit-details-marker {
+            display: none;
+        }
+        .help-content {
+            padding: 0 14px 12px;
+            font-size: 12px;
+            color: #d8e8fb;
+            line-height: 1.5;
+        }
+        .help-content strong {
+            color: #f1f7ff;
+        }
         .debug-row { display: flex; justify-content: space-between; margin: 3px 0; }
         .debug-label { color: var(--hud-muted); }
         .debug-value { color: #fff; }
@@ -858,6 +897,19 @@
             <div class="debug-row"><span class="debug-label">Wall Clips:</span><span class="debug-value good" id="clips">0</span></div>
             <div class="debug-row"><span class="debug-label">Floaters:</span><span class="debug-value good" id="floaters">0</span></div>
             <div style="margin-top:10px;font-size:10px;color:#888;">Press F3 to toggle</div>
+        </div>
+        <div class="help-panel">
+            <details>
+                <summary>Controls (click to expand)</summary>
+                <div class="help-content">
+                    <div><strong>Move:</strong> WASD or ZQSD</div>
+                    <div><strong>Up:</strong> Space</div>
+                    <div><strong>Down:</strong> C or Ctrl</div>
+                    <div><strong>Pan / Look:</strong> hold right click or hold left click and drag</div>
+                    <div><strong>Place tower:</strong> quick left click only on a valid build spot</div>
+                    <div><strong>Sprint:</strong> Shift</div>
+                </div>
+            </details>
         </div>
     </div>
 

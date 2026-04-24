@@ -363,11 +363,12 @@ export class Tower {
         this.turret.position.set(0, 2.0, 0);
         group.add(this.turret);
         const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 1.8, 12), metalMat);
-        bowl.rotation.x = Math.PI / 2.7;
-        bowl.position.set(0, 0.2, 0.6);
+        // Mortar tube points upward to match ballistic fire.
+        bowl.rotation.x = Math.PI / 7;
+        bowl.position.set(0, 0.45, 0.22);
         bowl.castShadow = true;
         this.turret.add(bowl);
-        this.muzzlePoint = new THREE.Vector3(0, 0.9, 1.3);
+        this.muzzlePoint = new THREE.Vector3(0, 1.15, 0.95);
         return group;
     }
 

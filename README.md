@@ -18,6 +18,52 @@ python -m http.server 8080
 # open http://localhost:8080
 ```
 
+## Deploy on Vercel (Frontend Only)
+
+This project can be deployed as a static frontend without the AI proxy (`/server`).
+
+### One-time setup
+
+1. Ensure AI is disabled in `src/settings.js`:
+
+```js
+ai: {
+    enabled: false
+}
+```
+
+1. Log in to Vercel:
+
+```bash
+npx vercel login
+```
+
+1. Deploy to production:
+
+```bash
+npx vercel --prod --yes
+```
+
+After deployment, Vercel prints a production URL (for example `https://kingdom-defense-3d.vercel.app`).
+
+### Update deployment (new version)
+
+Any time you change the game and want to publish a new version:
+
+```bash
+npx vercel --prod --yes
+```
+
+Vercel will update the same production project URL.
+
+### Optional preview deployment
+
+If you want a temporary preview URL before production:
+
+```bash
+npx vercel
+```
+
 ## AI Agent (Kimi)
 
 The game can run an assistant AI that places towers when enabled in `src/settings.js`.

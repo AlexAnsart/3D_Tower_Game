@@ -1,4 +1,5 @@
 import { SETTINGS, clampTowerLevel, getTowerStats } from '../settings.js';
+import { evaluatePlacementLookahead } from './placementLookahead.js';
 
 const VALID_TOWER_TYPES = new Set(['blaster', 'cannon', 'mortar', 'sniper']);
 
@@ -26,6 +27,18 @@ export class AgentController {
         try {
             const context = this.buildDecisionContext();
             if (!context.candidateSpots || context.candidateSpots.length === 0) return;
+
+            const lk = SETTINGS.ai.lookahead;
+            let lookResult = null;
+            if (lk?.enabled) {
+                lookResult = evaluatePlacementLookahead(this.game, context);
+                if (lookResult?.contextBlock) context.lookahead = lookResult.contextBlock;
+            }
+
+            if (lk?.enabled && lk.mode === 'auto') {
+                if (lookResult?.recommended) this.applyDecision(lookResult.recommended, context);
+                return;
+            }
 
             const controller = new AbortController();
             const timeout = window.setTimeout(() => controller.abort(), SETTINGS.ai.requestTimeoutMs);
