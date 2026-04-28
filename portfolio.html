@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio — Midnight</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #000000;
+      --surface:   #0a0a0a;
+      --card:      #111111;
+      --card-2:    #141414;
+      --border:    rgba(255,255,255,0.07);
+      --border-hi: rgba(255,255,255,0.14);
+      --text:      #f5f5f7;
+      --muted:     #6e6e73;
+      --accent:    #2997ff;
+      --accent-2:  #30d158;
+      --accent-3:  #ff375f;
+      --accent-4:  #ffd60a;
+      --accent-5:  #bf5af2;
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      overflow-x: hidden;
+    }
+
+    ::selection { background: rgba(41,151,255,0.3); color: #fff; }
+
+    /* ─── Scrollbar ─────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+    /* ─── Noise overlay ─────────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.022;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ─── Nav ───────────────────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 60px;
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.4s ease;
+    }
+
+    .nav-logo {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.01em;
+      transition: color 0.2s ease;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      background: rgba(255,255,255,0.1);
+      border: 1px solid var(--border-hi);
+      border-radius: 99px;
+      padding: 7px 18px;
+      text-decoration: none;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .nav-cta:hover {
+      background: rgba(255,255,255,0.16);
+      border-color: rgba(255,255,255,0.24);
+    }
+
+    /* ─── Hero ──────────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Ambient glow blobs */
+    .hero::before {
+      content: '';
+      position: absolute;
+      width: 900px; height: 900px;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      background: radial-gradient(ellipse at center,
+        rgba(41,151,255,0.12) 0%,
+        rgba(191,90,242,0.06) 40%,
+        transparent 70%);
+      pointer-events: none;
+      animation: pulse-glow 8s ease-in-out infinite alternate;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      bottom: -100px; right: -100px;
+      background: radial-gradient(ellipse at center,
+        rgba(48,209,88,0.07) 0%,
+        transparent 65%);
+      pointer-events: none;
+      animation: pulse-glow 10s ease-in-out infinite alternate-reverse;
+    }
+
+    @keyframes pulse-glow {
+      from { opacity: 0.6; transform: translateX(-50%) scale(1); }
+      to   { opacity: 1;   transform: translateX(-50%) scale(1.08); }
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(41,151,255,0.1);
+      border: 1px solid rgba(41,151,255,0.25);
+      border-radius: 99px;
+      padding: 6px 16px;
+      margin-bottom: 32px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .hero-title {
+      font-size: clamp(52px, 8vw, 112px);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 0.95;
+      color: var(--text);
+      position: relative;
+      z-index: 1;
+      margin-bottom: 28px;
+    }
+
+    .hero-title .line-2 {
+      background: linear-gradient(135deg, #2997ff 0%, #bf5af2 50%, #ff375f 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: clamp(16px, 2vw, 21px);
+      font-weight: 400;
+      color: var(--muted);
+      max-width: 560px;
+      line-height: 1.6;
+      position: relative;
+      z-index: 1;
+      margin-bottom: 48px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      font-size: 15px;
+      font-weight: 600;
+      color: #000;
+      background: var(--text);
+      border: none;
+      border-radius: 99px;
+      padding: 14px 32px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.2s var(--ease-spring), box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      transform: scale(1.04);
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.12);
+    }
+
+    .btn-ghost {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--border-hi);
+      border-radius: 99px;
+      padding: 14px 32px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.2s var(--ease-spring), background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .btn-ghost:hover {
+      transform: scale(1.04);
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.22);
+    }
+
+    /* Scroll indicator */
+    .scroll-hint {
+      position: absolute;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      z-index: 1;
+      animation: fade-up-in 1.2s 1.5s var(--ease-out-expo) both;
+    }
+
+    .scroll-hint-line {
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(to bottom, var(--muted), transparent);
+      animation: scroll-line 2s ease-in-out infinite;
+    }
+
+    @keyframes scroll-line {
+      0%   { transform: scaleY(0); transform-origin: top; }
+      50%  { transform: scaleY(1); transform-origin: top; }
+      51%  { transform: scaleY(1); transform-origin: bottom; }
+      100% { transform: scaleY(0); transform-origin: bottom; }
+    }
+
+    /* ─── Section wrapper ───────────────────────────────────────────── */
+    .section {
+      padding: 120px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(32px, 4vw, 52px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      color: var(--text);
+      margin-bottom: 64px;
+    }
+
+    /* ─── Bento Grid ────────────────────────────────────────────────── */
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-auto-rows: 80px;
+      gap: 16px;
+    }
+
+    /* Card base */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      position: relative;
+      transition:
+        transform 0.4s var(--ease-out-expo),
+        border-color 0.3s ease,
+        box-shadow 0.4s ease;
+      will-change: transform;
+    }
+
+    .card:hover {
+      transform: translateY(-4px) scale(1.005);
+      border-color: var(--border-hi);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    }
+
+    /* Card inner padding */
+    .card-inner {
+      padding: 32px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    /* Grid placements */
+    .card-hero    { grid-column: span 7; grid-row: span 5; }
+    .card-status  { grid-column: span 5; grid-row: span 2; }
+    .card-stack   { grid-column: span 5; grid-row: span 3; }
+    .card-work-1  { grid-column: span 6; grid-row: span 4; }
+    .card-work-2  { grid-column: span 6; grid-row: span 4; }
+    .card-work-3  { grid-column: span 4; grid-row: span 3; }
+    .card-work-4  { grid-column: span 4; grid-row: span 3; }
+    .card-work-5  { grid-column: span 4; grid-row: span 3; }
+    .card-about   { grid-column: span 8; grid-row: span 3; }
+    .card-contact { grid-column: span 4; grid-row: span 3; }
+    .card-quote   { grid-column: span 12; grid-row: span 2; }
+
+    /* ─── Card: Hero / Intro ────────────────────────────────────────── */
+    .card-hero {
+      background: linear-gradient(145deg, #0d0d0d 0%, #111 100%);
+    }
+
+    .card-hero .card-inner { justify-content: space-between; }
+
+    .avatar {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2997ff, #bf5af2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 800;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.08);
+    }
+
+    .card-hero-name {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      color: var(--text);
+      margin-top: auto;
+      margin-bottom: 8px;
+    }
+
+    .card-hero-role {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .card-hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 99px;
+      border: 1px solid var(--border-hi);
+      color: var(--muted);
+      background: rgba(255,255,255,0.04);
+      letter-spacing: 0.02em;
+    }
+
+    /* Decorative grid lines on hero card */
+    .card-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* ─── Card: Status ──────────────────────────────────────────────── */
+    .card-status {
+      background: linear-gradient(135deg, rgba(48,209,88,0.08) 0%, rgba(0,0,0,0) 60%);
+      border-color: rgba(48,209,88,0.15);
+    }
+
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 0 3px rgba(48,209,88,0.2);
+      animation: pulse-dot 2.5s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(48,209,88,0.2); }
+      50%       { box-shadow: 0 0 0 6px rgba(48,209,88,0.08); }
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .status-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-2);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .status-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .status-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ─── Card: Stack ───────────────────────────────────────────────── */
+    .stack-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .stack-item {
+      aspect-ratio: 1;
+      border-radius: var(--radius-md);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      cursor: default;
+    }
+
+    .stack-item:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: var(--border-hi);
+      color: var(--text);
+    }
+
+    .stack-icon {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    /* ─── Card: Work ────────────────────────────────────────────────── */
+    .card-work-1 { background: linear-gradient(145deg, #0d1117 0%, #111 100%); }
+    .card-work-2 { background: linear-gradient(145deg, #0d0d0d 0%, #111 100%); }
+
+    .work-preview {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    /* Animated gradient previews */
+    .preview-1 {
+      background: linear-gradient(135deg,
+        rgba(41,151,255,0.15) 0%,
+        rgba(191,90,242,0.1) 50%,
+        rgba(255,55,95,0.08) 100%);
+    }
+
+    .preview-2 {
+      background: linear-gradient(135deg,
+        rgba(48,209,88,0.12) 0%,
+        rgba(41,151,255,0.08) 60%,
+        transparent 100%);
+    }
+
+    .preview-3 {
+      background: linear-gradient(135deg,
+        rgba(255,214,10,0.12) 0%,
+        rgba(255,55,95,0.08) 100%);
+    }
+
+    .preview-4 {
+      background: linear-gradient(135deg,
+        rgba(191,90,242,0.12) 0%,
+        rgba(41,151,255,0.08) 100%);
+    }
+
+    .preview-5 {
+      background: linear-gradient(135deg,
+        rgba(255,55,95,0.12) 0%,
+        rgba(255,214,10,0.08) 100%);
+    }
+
+    /* Floating shapes inside previews */
+    .shape {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(40px);
+      animation: float-shape 6s ease-in-out infinite alternate;
+    }
+
+    @keyframes float-shape {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(20px, -15px) scale(1.1); }
+    }
+
+    .work-meta {
+      position: relative;
+      z-index: 1;
+    }
+
+    .work-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(41,151,255,0.12);
+      border: 1px solid rgba(41,151,255,0.2);
+      border-radius: 99px;
+      padding: 4px 10px;
+      margin-bottom: 10px;
+    }
+
+    .work-name {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .work-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 340px;
+    }
+
+    .work-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      transition: gap 0.2s ease;
+    }
+
+    .work-link:hover { gap: 10px; }
+
+    /* Small work cards */
+    .card-work-3 .card-inner,
+    .card-work-4 .card-inner,
+    .card-work-5 .card-inner { padding: 24px; }
+
+    .work-small-name {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .work-small-desc {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ─── Card: About ───────────────────────────────────────────────── */
+    .card-about {
+      background: linear-gradient(145deg, #0d0d0d 0%, #111 100%);
+    }
+
+    .about-text {
+      font-size: clamp(16px, 1.8vw, 22px);
+      font-weight: 400;
+      color: var(--text);
+      line-height: 1.65;
+      letter-spacing: -0.01em;
+    }
+
+    .about-text em {
+      font-style: normal;
+      color: var(--muted);
+    }
+
+    .about-text strong {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .about-highlight {
+      background: linear-gradient(135deg, #2997ff, #bf5af2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+    }
+
+    /* ─── Card: Contact ─────────────────────────────────────────────── */
+    .card-contact {
+      background: linear-gradient(145deg, rgba(41,151,255,0.06) 0%, rgba(0,0,0,0) 60%);
+      border-color: rgba(41,151,255,0.12);
+      cursor: pointer;
+    }
+
+    .contact-icon {
+      font-size: 36px;
+      margin-bottom: 16px;
+    }
+
+    .contact-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .contact-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .contact-links {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .contact-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .contact-link:hover {
+      background: rgba(255,255,255,0.07);
+      color: var(--text);
+      border-color: var(--border-hi);
+    }
+
+    /* ─── Card: Quote ───────────────────────────────────────────────── */
+    .card-quote {
+      background: linear-gradient(135deg, #0a0a0a 0%, #111 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .quote-text {
+      font-size: clamp(18px, 2.5vw, 28px);
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      color: var(--muted);
+      max-width: 800px;
+      line-height: 1.5;
+      padding: 32px;
+    }
+
+    .quote-text strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* ─── Stats row ─────────────────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      transition: transform 0.3s var(--ease-out-expo), border-color 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-hi);
+    }
+
+    .stat-number {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* ─── Experience timeline ───────────────────────────────────────── */
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 32px;
+      padding: 32px 0;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .timeline-item:last-child { border-bottom: none; }
+
+    .timeline-date {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      padding-top: 4px;
+    }
+
+    .timeline-content {}
+
+    .timeline-role {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .timeline-company {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .timeline-desc {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ─── Footer ────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-copy {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover { color: var(--text); }
+
+    /* ─── Scroll-reveal animations ──────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(32px);
+      transition:
+        opacity 0.8s var(--ease-out-expo),
+        transform 0.8s var(--ease-out-expo);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Stagger children */
+    .reveal-stagger > * {
+      opacity: 0;
+      transform: translateY(24px);
+      transition:
+        opacity 0.7s var(--ease-out-expo),
+        transform 0.7s var(--ease-out-expo);
+    }
+
+    .reveal-stagger.visible > *:nth-child(1)  { opacity: 1; transform: none; transition-delay: 0.05s; }
+    .reveal-stagger.visible > *:nth-child(2)  { opacity: 1; transform: none; transition-delay: 0.12s; }
+    .reveal-stagger.visible > *:nth-child(3)  { opacity: 1; transform: none; transition-delay: 0.19s; }
+    .reveal-stagger.visible > *:nth-child(4)  { opacity: 1; transform: none; transition-delay: 0.26s; }
+    .reveal-stagger.visible > *:nth-child(5)  { opacity: 1; transform: none; transition-delay: 0.33s; }
+    .reveal-stagger.visible > *:nth-child(6)  { opacity: 1; transform: none; transition-delay: 0.40s; }
+    .reveal-stagger.visible > *:nth-child(7)  { opacity: 1; transform: none; transition-delay: 0.47s; }
+    .reveal-stagger.visible > *:nth-child(8)  { opacity: 1; transform: none; transition-delay: 0.54s; }
+    .reveal-stagger.visible > *:nth-child(9)  { opacity: 1; transform: none; transition-delay: 0.61s; }
+    .reveal-stagger.visible > *:nth-child(10) { opacity: 1; transform: none; transition-delay: 0.68s; }
+    .reveal-stagger.visible > *:nth-child(11) { opacity: 1; transform: none; transition-delay: 0.75s; }
+    .reveal-stagger.visible > *:nth-child(12) { opacity: 1; transform: none; transition-delay: 0.82s; }
+
+    /* Hero elements animate in on load */
+    @keyframes fade-up-in {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-eyebrow { animation: fade-up-in 0.8s 0.1s var(--ease-out-expo) both; }
+    .hero-title   { animation: fade-up-in 0.9s 0.2s var(--ease-out-expo) both; }
+    .hero-sub     { animation: fade-up-in 0.9s 0.35s var(--ease-out-expo) both; }
+    .hero-actions { animation: fade-up-in 0.9s 0.5s var(--ease-out-expo) both; }
+
+    /* ─── Cursor glow ───────────────────────────────────────────────── */
+    .cursor-glow {
+      position: fixed;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(41,151,255,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      transform: translate(-50%, -50%);
+      transition: left 0.6s ease, top 0.6s ease;
+    }
+
+    /* ─── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+
+      .bento {
+        grid-template-columns: 1fr 1fr;
+        grid-auto-rows: auto;
+      }
+
+      .card-hero,
+      .card-status,
+      .card-stack,
+      .card-work-1,
+      .card-work-2,
+      .card-work-3,
+      .card-work-4,
+      .card-work-5,
+      .card-about,
+      .card-contact,
+      .card-quote {
+        grid-column: span 2;
+        grid-row: span 1;
+      }
+
+      .card-inner { padding: 24px; }
+
+      .stats-row { grid-template-columns: 1fr 1fr; }
+
+      .timeline-item { grid-template-columns: 1fr; gap: 8px; }
+
+      footer { flex-direction: column; align-items: flex-start; }
+    }
+
+    @media (max-width: 480px) {
+      .bento { grid-template-columns: 1fr; }
+      .card-hero, .card-status, .card-stack,
+      .card-work-1, .card-work-2, .card-work-3,
+      .card-work-4, .card-work-5, .card-about,
+      .card-contact, .card-quote { grid-column: span 1; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .stack-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cursor glow -->
+  <div class="cursor-glow" id="cursorGlow"></div>
+
+  <!-- ─── Nav ──────────────────────────────────────────────────────── -->
+  <nav>
+    <a href="#" class="nav-logo">Alex Chen</a>
+    <ul class="nav-links">
+      <li><a href="#work">Work</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#experience">Experience</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <a href="mailto:hello@alexchen.dev" class="nav-cta">Say hello →</a>
+  </nav>
+
+  <!-- ─── Hero ─────────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-eyebrow">Available for new projects</div>
+    <h1 class="hero-title">
+      Design.<br>
+      <span class="line-2">Engineer.</span><br>
+      Ship.
+    </h1>
+    <p class="hero-sub">
+      Full-stack engineer & product designer crafting digital experiences that feel inevitable.
+    </p>
+    <div class="hero-actions">
+      <a href="#work" class="btn-primary">View my work</a>
+      <a href="#contact" class="btn-ghost">Get in touch</a>
+    </div>
+    <div class="scroll-hint">
+      <span>Scroll</span>
+      <div class="scroll-hint-line"></div>
+    </div>
+  </section>
+
+  <!-- ─── Bento: Intro cards ───────────────────────────────────────── -->
+  <div class="section" id="about">
+    <div class="section-label">About</div>
+    <div class="section-title">A little about me.</div>
+
+    <div class="bento reveal-stagger">
+
+      <!-- Hero card -->
+      <div class="card card-hero">
+        <div class="card-inner">
+          <div class="avatar">AC</div>
+          <div>
+            <div class="card-hero-name">Alex Chen</div>
+            <div class="card-hero-role">Full-Stack Engineer & Product Designer</div>
+            <div class="card-hero-tags">
+              <span class="tag">San Francisco, CA</span>
+              <span class="tag">Open to remote</span>
+              <span class="tag">5+ years exp</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status card -->
+      <div class="card card-status">
+        <div class="card-inner" style="justify-content: flex-start; padding-top: 28px;">
+          <div class="status-row">
+            <div class="status-dot"></div>
+            <div class="status-label">Available now</div>
+          </div>
+          <div class="status-title">Open to opportunities</div>
+          <div class="status-sub">Currently exploring full-time roles and select freelance projects in product engineering.</div>
+        </div>
+      </div>
+
+      <!-- Stack card -->
+      <div class="card card-stack">
+        <div class="card-inner" style="justify-content: flex-start; padding-top: 28px;">
+          <div class="stack-title">Tech Stack</div>
+          <div class="stack-grid">
+            <div class="stack-item"><span class="stack-icon">⚛️</span>React</div>
+            <div class="stack-item"><span class="stack-icon">🔷</span>TypeScript</div>
+            <div class="stack-item"><span class="stack-icon">🟢</span>Node.js</div>
+            <div class="stack-item"><span class="stack-icon">🐍</span>Python</div>
+            <div class="stack-item"><span class="stack-icon">🗄️</span>Postgres</div>
+            <div class="stack-item"><span class="stack-icon">☁️</span>AWS</div>
+            <div class="stack-item"><span class="stack-icon">🎨</span>Figma</div>
+            <div class="stack-item"><span class="stack-icon">🐳</span>Docker</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── Stats ─────────────────────────────────────────────────────── -->
+  <div class="section" style="padding-top: 0;">
+    <div class="stats-row reveal-stagger">
+      <div class="stat-card">
+        <div class="stat-number" style="color: var(--accent);">5+</div>
+        <div class="stat-label">Years of experience</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" style="color: var(--accent-2);">40+</div>
+        <div class="stat-label">Projects shipped</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" style="color: var(--accent-5);">12</div>
+        <div class="stat-label">Happy clients</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" style="color: var(--accent-4);">∞</div>
+        <div class="stat-label">Cups of coffee</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Work ─────────────────────────────────────────────────────── -->
+  <div class="section" id="work">
+    <div class="section-label">Selected Work</div>
+    <div class="section-title">Things I've built.</div>
+
+    <div class="bento reveal-stagger">
+
+      <!-- Work 1 -->
+      <div class="card card-work-1">
+        <div class="work-preview preview-1">
+          <div class="shape" style="width:300px;height:300px;top:-80px;right:-60px;background:rgba(41,151,255,0.18);animation-duration:7s;"></div>
+          <div class="shape" style="width:200px;height:200px;bottom:-40px;left:20px;background:rgba(191,90,242,0.12);animation-duration:9s;animation-direction:alternate-reverse;"></div>
+        </div>
+        <div class="card-inner">
+          <div class="work-meta">
+            <div class="work-tag">SaaS · 2024</div>
+            <div class="work-name">Orbit Analytics</div>
+            <div class="work-desc">Real-time product analytics platform serving 50k+ users. Built with React, Node.js, and ClickHouse for sub-second query performance.</div>
+            <a href="#" class="work-link">View case study →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Work 2 -->
+      <div class="card card-work-2">
+        <div class="work-preview preview-2">
+          <div class="shape" style="width:280px;height:280px;top:-60px;left:-40px;background:rgba(48,209,88,0.15);animation-duration:8s;"></div>
+          <div class="shape" style="width:180px;height:180px;bottom:-20px;right:40px;background:rgba(41,151,255,0.1);animation-duration:6s;animation-direction:alternate-reverse;"></div>
+        </div>
+        <div class="card-inner">
+          <div class="work-meta">
+            <div class="work-tag" style="color:var(--accent-2);background:rgba(48,209,88,0.1);border-color:rgba(48,209,88,0.2);">Mobile · 2024</div>
+            <div class="work-name">Bloom Finance</div>
+            <div class="work-desc">Personal finance app with AI-powered insights. 4.8★ on App Store, 200k+ downloads in first 6 months.</div>
+            <a href="#" class="work-link" style="color:var(--accent-2);">View case study →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Work 3 -->
+      <div class="card card-work-3">
+        <div class="work-preview preview-3" style="opacity:0.6;"></div>
+        <div class="card-inner">
+          <div class="work-meta">
+            <div class="work-tag" style="color:var(--accent-4);background:rgba(255,214,10,0.1);border-color:rgba(255,214,10,0.2);">Design System</div>
+            <div class="work-small-name">Nova UI Kit</div>
+            <div class="work-small-desc">Open-source design system with 200+ components. 3k GitHub stars.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Work 4 -->
+      <div class="card card-work-4">
+        <div class="work-preview preview-4" style="opacity:0.6;"></div>
+        <div class="card-inner">
+          <div class="work-meta">
+            <div class="work-tag" style="color:var(--accent-5);background:rgba(191,90,242,0.1);border-color:rgba(191,90,242,0.2);">AI · 2023</div>
+            <div class="work-small-name">Scribe AI</div>
+            <div class="work-small-desc">LLM-powered documentation generator. Integrated with GitHub Actions.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Work 5 -->
+      <div class="card card-work-5">
+        <div class="work-preview preview-5" style="opacity:0.6;"></div>
+        <div class="card-inner">
+          <div class="work-meta">
+            <div class="work-tag" style="color:var(--accent-3);background:rgba(255,55,95,0.1);border-color:rgba(255,55,95,0.2);">Game · 2023</div>
+            <div class="work-small-name">Tower Kingdom</div>
+            <div class="work-small-desc">3D browser tower defense game built with Three.js and custom physics.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- About text -->
+      <div class="card card-about">
+        <div class="card-inner" style="justify-content: center;">
+          <p class="about-text">
+            I believe the best products are built at the intersection of <span class="about-highlight">engineering precision</span> and <span class="about-highlight">design intuition</span>. <em>I obsess over the details that most people never notice — and that's exactly why they feel right.</em>
+          </p>
+        </div>
+      </div>
+
+      <!-- Contact card -->
+      <div class="card card-contact" id="contact">
+        <div class="card-inner" style="justify-content: flex-start; padding-top: 28px;">
+          <div class="contact-icon">✉️</div>
+          <div class="contact-title">Let's work together</div>
+          <div class="contact-sub">Have a project in mind? I'd love to hear about it.</div>
+          <div class="contact-links">
+            <a href="mailto:hello@alexchen.dev" class="contact-link">
+              <span>📧</span> hello@alexchen.dev
+            </a>
+            <a href="https://github.com" class="contact-link" target="_blank">
+              <span>🐙</span> github.com/alexchen
+            </a>
+            <a href="https://linkedin.com" class="contact-link" target="_blank">
+              <span>💼</span> linkedin.com/in/alexchen
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quote -->
+      <div class="card card-quote">
+        <p class="quote-text">
+          "The details are not the details. <strong>They make the design.</strong>"
+          <em style="display:block;margin-top:12px;font-size:0.7em;color:var(--muted);">— Charles Eames</em>
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── Experience ────────────────────────────────────────────────── -->
+  <div class="section" id="experience">
+    <div class="section-label">Experience</div>
+    <div class="section-title">Where I've worked.</div>
+
+    <div class="timeline reveal">
+      <div class="timeline-item">
+        <div class="timeline-date">2022 — Present</div>
+        <div class="timeline-content">
+          <div class="timeline-role">Senior Software Engineer</div>
+          <div class="timeline-company">Vercel</div>
+          <div class="timeline-desc">Leading frontend infrastructure for the deployment platform. Reduced build times by 40% through custom caching strategies and edge optimization.</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2020 — 2022</div>
+        <div class="timeline-content">
+          <div class="timeline-role">Product Engineer</div>
+          <div class="timeline-company">Linear</div>
+          <div class="timeline-desc">Built core features of the issue tracking product. Owned the real-time collaboration engine and keyboard shortcut system used by 100k+ teams.</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2018 — 2020</div>
+        <div class="timeline-content">
+          <div class="timeline-role">Frontend Engineer</div>
+          <div class="timeline-company">Stripe</div>
+          <div class="timeline-desc">Worked on the Stripe Dashboard and developer documentation. Contributed to the design system used across all Stripe products.</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2016 — 2018</div>
+        <div class="timeline-content">
+          <div class="timeline-role">Software Engineer Intern → Full-time</div>
+          <div class="timeline-company">Airbnb</div>
+          <div class="timeline-desc">Started as an intern on the search team, converted to full-time. Shipped the map-based search experience to 150M+ users.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Footer ────────────────────────────────────────────────────── -->
+  <footer>
+    <div class="footer-copy">© 2026 Alex Chen. Crafted with care.</div>
+    <div class="footer-links">
+      <a href="https://github.com" target="_blank">GitHub</a>
+      <a href="https://twitter.com" target="_blank">Twitter</a>
+      <a href="https://linkedin.com" target="_blank">LinkedIn</a>
+      <a href="mailto:hello@alexchen.dev">Email</a>
+    </div>
+  </footer>
+
+  <!-- ─── Scripts ───────────────────────────────────────────────────── -->
+  <script>
+    // ── Cursor glow ──────────────────────────────────────────────────
+    const glow = document.getElementById('cursorGlow');
+    let mx = window.innerWidth / 2, my = window.innerHeight / 2;
+    let cx = mx, cy = my;
+
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX;
+      my = e.clientY;
+    });
+
+    function animateCursor() {
+      cx += (mx - cx) * 0.08;
+      cy += (my - cy) * 0.08;
+      glow.style.left = cx + 'px';
+      glow.style.top  = cy + 'px';
+      requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
+
+    // ── Scroll reveal ────────────────────────────────────────────────
+    const revealEls = document.querySelectorAll('.reveal, .reveal-stagger');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, {
+      threshold: 0.08,
+      rootMargin: '0px 0px -40px 0px'
+    });
+
+    revealEls.forEach(el => observer.observe(el));
+
+    // ── Nav active state on scroll ───────────────────────────────────
+    const nav = document.querySelector('nav');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 60) {
+        nav.style.background = 'rgba(0,0,0,0.88)';
+      } else {
+        nav.style.background = 'rgba(0,0,0,0.72)';
+      }
+    }, { passive: true });
+
+    // ── Smooth parallax on hero ──────────────────────────────────────
+    const hero = document.querySelector('.hero');
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY;
+      if (y < window.innerHeight) {
+        hero.style.transform = `translateY(${y * 0.3}px)`;
+        hero.style.opacity = 1 - (y / window.innerHeight) * 1.2;
+      }
+    }, { passive: true });
+
+    // ── Card tilt on hover ───────────────────────────────────────────
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('mousemove', e => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const cx = rect.width  / 2;
+        const cy = rect.height / 2;
+        const dx = (x - cx) / cx;
+        const dy = (y - cy) / cy;
+        const tiltX = dy * -4;
+        const tiltY = dx *  4;
+        card.style.transform = `translateY(-4px) scale(1.005) perspective(800px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+      });
+
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = '';
+        card.style.transition = 'transform 0.6s cubic-bezier(0.16,1,0.3,1), border-color 0.3s ease, box-shadow 0.4s ease';
+        setTimeout(() => { card.style.transition = ''; }, 600);
+      });
+    });
+
+    // ── Stat counter animation ───────────────────────────────────────
+    const statNumbers = document.querySelectorAll('.stat-number');
+    const statObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const el = entry.target;
+        const text = el.textContent.trim();
+        const num = parseFloat(text);
+        if (isNaN(num)) return;
+        const suffix = text.replace(/[\d.]/g, '');
+        const duration = 1200;
+        const start = performance.now();
+        const from = 0;
+
+        function tick(now) {
+          const t = Math.min((now - start) / duration, 1);
+          const ease = 1 - Math.pow(1 - t, 4);
+          const val = from + (num - from) * ease;
+          el.textContent = (Number.isInteger(num) ? Math.round(val) : val.toFixed(1)) + suffix;
+          if (t < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+        statObserver.unobserve(el);
+      });
+    }, { threshold: 0.5 });
+
+    statNumbers.forEach(el => statObserver.observe(el));
+  </script>
+</body>
+</html>
